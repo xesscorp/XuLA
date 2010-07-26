@@ -74,6 +74,7 @@ typedef enum
 	SET_OSC_FREQ_CMD		= 0x4c,	// Set the frequency of the DS1075 oscillator. 
 	ENABLE_RETURN_CMD		= 0x4d,	// Enable return of info in response to a command.
 	DISABLE_RETURN_CMD		= 0x4e,	// Disable return of info in response to a command.
+	TAP_SEQ_CMD				= 0x4f, // Send multiple TMS & TDI bits while receiving multiple TDO bits.
 	RESET           		= 0xff
 } USBCMD;
 

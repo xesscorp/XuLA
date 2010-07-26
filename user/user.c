@@ -181,10 +181,11 @@ typedef union DATA_PACKET
 	    USBCMD cmd;
 		char info_str[USBGEN_EP_SIZE-1];
 	};
-	struct
+	struct // TAP_SEQ_CMD structure
 	{
 	    USBCMD cmd;
 		long num_bits;
+		byte flags;
 	};
 	struct
 	{
@@ -197,6 +198,20 @@ typedef union DATA_PACKET
 		unsigned prog:1;
 	};
 } DATA_PACKET;
+
+
+// Definitions for TAP_SEQ_CMD
+
+#define TAP_SEQ_CMD_HDR_LEN			    6
+
+// Flag bits
+#define GET_TDO_MASK					0x01    // Set if gathering TDO bits.
+#define PUT_TMS_MASK					0x02    // Set if TMS bits are included in the packets.
+#define TMS_VAL_MASK					0x04    // Static value for TMS if PUT_TMS_MASK is cleared.
+#define PUT_TDI_MASK					0x08    // Set if TDI bits are included in the packets.
+#define TDI_VAL_MASK					0x10    // Static value for TDI if PUT_TDI_MASK is cleared.
+#define	DO_MULTIPLE_PACKETS_MASK		0x80    // Set if command extends over multiple USB packets.
+
 
 /** V A R I A B L E S ********************************************************/
 
@@ -224,7 +239,7 @@ static rom const byte reverse_bits[] = {
 };
 
 #pragma romdata
-static rom const char *info_str = "V01.01\n"; // Change version in usbdsc.c as well!!
+static rom const char *info_str = "V01.04\n"; // Change version in usbdsc.c as well!!
 
 #pragma udata access my_access
 near long lcntr;					// Large counter for fast loops.
@@ -355,14 +370,18 @@ void ServiceRequests(void)
 	byte* tdi_data[2];				// Pointers to USB ping-pong endpoint buffers containing TDI bits.
 	byte* tdo_data[2];				// Pointers to USB ping-pong endpoint buffers containing TDO bits.
 	byte data_index;				// Index of the currently-active endpoint data buffer.
-	byte *tdi, *tdo;				// Pointers to the currently-active endpoint buffers for TDI and TDO bits.
+	byte *tdi;						// Pointers to the currently-active endpoint buffer for TDI bits.
+	byte *tdo;						// Pointers to the currently-active endpoint buffer for TDO bits.
+	byte *tms_tdi;					// Pointers to the currently-active endpoint buffer for TDI & TMS bits.
 	long num_bits;					// # of total bits in stream of bits sent to and from the JTAG device.
 	byte num_final_bits;			// # of bits in the final packet of TDI/TDO bits.
 	long num_bytes;					// # of total bytes in the stream of TDI/TDO bits.
 	byte num_final_bytes;			// # of bytes in the final packet of TDI/TDO bits.
+	byte hdr_size;
+	byte flags;
 	byte bit_mask;					// Mask to select bit from a byte.
 	byte bit_cntr;					// Counter within a byte of bits.
-	byte tdi_byte, tdo_byte;		// Temporary bytes of TDI and TDO bits.
+	byte tms_byte, tdi_byte, tdo_byte;		// Temporary bytes of TMS, TDI and TDO bits.
 	static byte sec_present = NO;	// True if the secondary JTAG device is present.
 	static byte sec_tck_inv = NO;	// True if there is an inverter on the secondary JTAG TCK.
 	static byte sec_tdo_inv = NO;	// True if there is an inverter on the secondary JTAG TDO.
@@ -384,7 +403,7 @@ void ServiceRequests(void)
 	// Process packets received through the primary endpoint.
     if(USBGenPrimaryRead((byte*)&dataPacket,sizeof(dataPacket)))
     {
-		USBDriverService();
+        USBDriverService();                 // Interrupt or polling method
 		
 		blink_counter = NUM_ACTIVITY_BLINKS;	// Blink the LED whenever a USB transaction occurs.
 		
@@ -957,6 +976,395 @@ void ServiceRequests(void)
 
 				break;
 
+			case TAP_SEQ_CMD:		// Output TMS & TDI values; get TDO value 
+				num_return_bytes = 0;	// This command doesn't return any bytes by the default return routine.
+
+				blink_counter = MAX_BYTE_VAL;	// Blink LED continuously during the (long) duration of this command.
+
+				// The first packet received contains the TAP_SEQ_CMD command and the number
+				// of TDI bits that will follow in succeeding packets.
+				num_bits = dataPacket.num_bits;
+
+				// Exit if no TDI bits will follow (this is probably an error...).
+				if(num_bits == 0)
+					break;
+
+				// Get flags from the first packet that indicate how TMS and TDO bits are handled.
+				flags = dataPacket.flags;
+
+				// Setup pointers to the ping-pong buffers for getting/returning TDI/TDO bits.
+				tdi_data[0] = usbgen_primary_out0;
+				tdi_data[1] = usbgen_primary_out1;
+				tdo_data[0] = usbgen_primary_in0;
+				tdo_data[1] = usbgen_primary_in1;
+				data_index  = 1;  // Index to the active ping-pong buffers.
+
+				hdr_size = TAP_SEQ_CMD_HDR_LEN;  // Size of the command header in the first packet.
+				tms_tdi  = (byte*)&dataPacket + hdr_size;  // Pointer to TMS+TDI bits that follow command bytes in first packet.
+				tdo      = tdo_data[data_index];  // Pointer to buffer for storing TDO bits.
+
+				// Total number of header+TMS+TDI bytes in all the packets for this command.
+				num_bytes = (long)((num_bits+7)/8);
+				if(flags & PUT_TMS_MASK)
+					num_bytes *= 2; // Twice the number of bytes if TMS bits are also being sent.
+				num_bytes += hdr_size;
+
+                // Initialize TCK, TMS and TDI levels.
+				TCK = 0;  // Initialize TCK (should have been low already).
+				if(!(flags & PUT_TMS_MASK))
+					TMS = (flags & TMS_VAL_MASK) ? 1:0; // No TMS bits in packets, so set TMS to the static value indicated in the flag bit.
+				if(!(flags & PUT_TDI_MASK))
+					TDI = (flags & TDI_VAL_MASK) ? 1:0; // No TDI bits in packets, so set TDI to the static value indicated in the flag bit.
+
+				// Process the first M-1 of M packets that are completely filled with TMS+TDI bits.
+				flags &= ~DO_MULTIPLE_PACKETS_MASK; // Assume this command uses a single USB packet.
+				for( ; num_bytes > USBGEN_EP_SIZE; num_bytes-=USBGEN_EP_SIZE)
+				{
+					flags |= DO_MULTIPLE_PACKETS_MASK;	// Record that this command extends over multiple USB packets.
+
+					if(blink_counter == 0U)
+						blink_counter = MAX_BYTE_VAL;	// Keep LED blinking during this command to indicate activity.
+
+					// Process the TMS & TDI bytes in the packet and collect the TDO bits.
+					switch(flags & (PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK))
+					{
+                        case GET_TDO_MASK:  // Just gather TDO bits
+                            if(use_mssp)
+                            {
+                                tdi_byte = (flags & TDI_VAL_MASK) ? 0xFF : 0x00;
+            					TCK_TRIS = 1;	// Disable the TCK output so that the clock won't glitch when the MSSP is enabled.
+            					SSPCON1bits.SSPEN = 1;	// Enable the MSSP.
+            					TCK_TRIS = 0;	// Enable the TCK output after the MSSP glitch is over.
+             					buffer_cntr = USBGEN_EP_SIZE - hdr_size;
+            					save_FSR0 = FSR0;
+            					save_FSR1 = FSR1;
+        						TBLPTR = (short long)reverse_bits;	// Setup the pointer to the bit-order table.
+        						FSR0 = (word)tdo;
+    							_asm
+    							MOVLW	0						// Load the SPI transmitter with 0's
+    							MOVWF	SSPBUF,ACCESS			//   so TDI is cleared while TDO is collected.
+    							NOP								// The NOPs are used to insert delay while the SSPBUF is tx/rx'ed.
+    							NOP
+    							NOP
+    							NOP
+    							NOP
+    							NOP
+    						PRI_TAP_LOOP_2:
+    							NOP
+    							NOP
+    							DCFSNZ	buffer_cntr,1,ACCESS
+    							BRA		PRI_TAP_LOOP_3
+    							MOVFF	SSPBUF,TBLPTRL			// Get the TDO byte that was received and use it to index into the bit-order table.
+    							MOVWF	SSPBUF,ACCESS
+    							TBLRD							// TABLAT now contains the TDO byte in the proper bit-order.
+    							MOVFF	TABLAT,POSTINC0			// Store the TDO byte into the buffer and inc. the pointer.
+    							BRA		PRI_TAP_LOOP_2
+    						PRI_TAP_LOOP_3:
+    							MOVFF	SSPBUF,TBLPTRL			// Get the TDO byte that was received and use it to index into the bit-order table.
+    							TBLRD							// TABLAT now contains the TDO byte in the proper bit-order.
+    							MOVFF	TABLAT,POSTINC0			// Store the TDO byte into the buffer and inc. the pointer.
+    							_endasm
+            					TCK = 0;
+            					SSPCON1bits.SSPEN = 0;	// Turn off the MSSP.  The remaining bits are received manually.
+            					FSR0 = save_FSR0;
+            					FSR1 = save_FSR1;
+                            }
+                            else
+                            {
+    							for(buffer_cntr=USBGEN_EP_SIZE-hdr_size ; buffer_cntr!=0; buffer_cntr--)
+    							{
+    								tdo_byte = 0; // Clear byte for receiving TDO bits.
+    								for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+    								{
+    									if(TDO)
+    										tdo_byte |= bit_mask;
+    									TCK = 1;
+    									TCK = 0;
+    								}
+    								*tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
+    							}
+                            }
+                            break;
+						case PUT_TDI_MASK:	// Just output the TDI bits.
+       						if(use_mssp)
+    						{
+            					TCK_TRIS = 1;	// Disable the TCK output so that the clock won't glitch when the MSSP is enabled.
+            					SSPCON1bits.SSPEN = 1;	// Enable the MSSP.
+            					TCK_TRIS = 0;	// Enable the TCK output after the MSSP glitch is over.
+             					buffer_cntr = USBGEN_EP_SIZE - hdr_size;
+            					save_FSR0 = FSR0;
+            					save_FSR1 = FSR1;
+        						TBLPTR = (short long)reverse_bits;	// Setup the pointer to the bit-order table.
+        						FSR0 = (word)tms_tdi;
+    							_asm
+    							MOVFF	POSTINC0,TBLPTRL		// Get the current TDI byte and use it to index into the bit-order table.
+    							TBLRD							// TABLAT now contains the TDI byte in the proper bit-order.
+    							MOVFF	TABLAT,SSPBUF			// Load TDI byte into SPI transmitter.
+    							NOP
+    							NOP
+    						PRI_TAP_LOOP_0:
+    							DCFSNZ	buffer_cntr,1,ACCESS	// Decrement the buffer counter and continue if not zero
+    							BRA		PRI_TAP_LOOP_1
+    							MOVFF	POSTINC0,TBLPTRL		// Get the current TDI byte and use it to index into the bit-order table.
+    							TBLRD							// TABLAT now contains the TDI byte in the proper bit-order.
+    							MOVFF	SSPBUF,TBLPTRL			// Get the TDO byte just to clear the buffer-full flag (don't use TDO).
+    							MOVFF	TABLAT,SSPBUF			// Load TDI byte into SPI transmitter ASAP.
+    							BRA		PRI_TAP_LOOP_0
+    						PRI_TAP_LOOP_1:
+    							NOP
+    							NOP
+    							NOP
+    							MOVFF	SSPBUF,TBLPTRL			// Get the TDO byte just to clear the buffer-full flag (don't use TDO).
+    							_endasm
+            					TCK = 0;
+            					SSPCON1bits.SSPEN = 0;	// Turn off the MSSP.  The remaining bits are transmitted manually.
+            					FSR0 = save_FSR0;
+            					FSR1 = save_FSR1;
+    						}
+                            else
+                            {
+    							for(buffer_cntr=USBGEN_EP_SIZE-hdr_size ; buffer_cntr!=0; buffer_cntr--)
+    							{
+    								tdi_byte = *tms_tdi++;
+    								for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+    								{
+    									TDI = tdi_byte & bit_mask ? 1:0;
+    									TCK = 1;
+    									TCK = 0;
+    								}
+    							}
+                            }
+							break;
+						case PUT_TDI_MASK | GET_TDO_MASK:	// Output only TDI bits while collecting TDO bits.
+							for(buffer_cntr=USBGEN_EP_SIZE-hdr_size ; buffer_cntr!=0; buffer_cntr--)
+							{
+								tdi_byte = *tms_tdi++;
+								tdo_byte = 0; // Clear byte for receiving TDO bits.
+								for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+								{
+									if(TDO)
+										tdo_byte |= bit_mask;
+									TDI = tdi_byte & bit_mask ? 1:0;
+									TCK = 1;
+									TCK = 0;
+								}
+								*tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
+							}
+							break;
+						case PUT_TDI_MASK | PUT_TMS_MASK:	// Output both TDI & TMS bits and ignore TDO bits.
+							for(buffer_cntr=USBGEN_EP_SIZE-hdr_size ; buffer_cntr!=0; buffer_cntr-=2)
+							{
+								tms_byte = *tms_tdi++;
+								tdi_byte = *tms_tdi++;
+								for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+								{
+									TMS = tms_byte & bit_mask ? 1:0;
+									TDI = tdi_byte & bit_mask ? 1:0;
+									TCK = 1;
+									TCK = 0;
+								}
+							}
+							break;
+						case PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK:	// Output both TDI & TMS bits while collecting TDO bits.
+						default:
+							for(buffer_cntr=USBGEN_EP_SIZE-hdr_size ; buffer_cntr!=0; buffer_cntr-=2)
+							{
+								tms_byte = *tms_tdi++;
+								tdi_byte = *tms_tdi++;
+								tdo_byte = 0; // Clear byte for receiving TDO bits.
+								for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+								{
+									if(TDO)
+										tdo_byte |= bit_mask;
+									TMS = tms_byte & bit_mask ? 1:0;
+									TDI = tdi_byte & bit_mask ? 1:0;
+									TCK = 1;
+									TCK = 0;
+								}
+								*tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
+							}
+							break;
+					}
+
+					// Send all the recorded TDO bits back in a complete packet.
+					if(flags & GET_TDO_MASK)
+					{
+	       				while(mUSBGenPrimaryTxIsBusy()) ;  // Wait until USB transmitter is not busy.
+						USBGEN_BD_PRIMARY_IN.ADR = tdo_data[data_index];  // Set endpoint pointer to stored TDO bit buffer.
+                        // If received packets contain both TDI & TMS bits, return TDO packet is half-size (one TDO bit per TDI bit).
+						if(flags & PUT_TMS_MASK)
+					    	USBGEN_BD_PRIMARY_IN.Cnt = (USBGEN_EP_SIZE-hdr_size) / 2;
+						else
+					    	USBGEN_BD_PRIMARY_IN.Cnt = (USBGEN_EP_SIZE-hdr_size);
+						USBDriverService();
+				    	mUSBBufferReady(USBGEN_BD_PRIMARY_IN);
+					}
+
+                    if(flags & PUT_TDI_MASK)
+                    {
+    					// Wait until the next packet of TMS & TDI bits arrives.
+    					while(mUSBGenPrimaryRxIsBusy()) ;
+    
+    					// Change the buffer address in the endpoint so it will place the next packet of TDI bits
+    					// in the other ping-pong buffer while the current TDI packet is sent to the JTAG port.
+    					if(num_bytes-USBGEN_EP_SIZE > USBGEN_EP_SIZE)
+    					{
+    						USBGEN_BD_PRIMARY_OUT.ADR = tdi_data[data_index];	// Change buffer address in endpoint.
+    			        	USBGEN_BD_PRIMARY_OUT.Cnt = USBGEN_EP_SIZE;
+    	     				mUSBBufferReady(USBGEN_BD_PRIMARY_OUT);		// Enable the endpoint to receive more TMS & TDI data.
+    					    USBDriverService();
+    					}
+                    }
+
+					data_index ^= 1;  // Point to the next ping-pong buffer.
+					tms_tdi     = tdi_data[data_index];  // Init pointer to the just-received TMS & TDI data.
+					tdo         = tdo_data[data_index];  // TDO data will be written here.
+
+					hdr_size = 0;  // There is no command header in any packets following the first, just TDI & TMS bits.
+				}  // First M-1 TDI packets have been processed.
+
+                // If only one packet was received, this will subtract the number of command header bytes.
+                // Otherwise, the number of bytes is just the number in the last packet.
+				num_bytes -= hdr_size;
+
+				// Process all except the last TDI byte in the final packet.
+				switch(flags & (PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK))
+				{
+                    case GET_TDO_MASK:  // Just gather TDO bits
+						for(buffer_cntr=num_bytes; buffer_cntr>1; buffer_cntr--)
+						{
+							tdo_byte = 0; // Clear byte for receiving TDO bits.
+							for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+							{
+								if(TDO)
+									tdo_byte |= bit_mask;
+								TCK = 1;
+								TCK = 0;
+							}
+							*tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
+						}
+                        break;
+					case PUT_TDI_MASK:	// Just output the TDI bits.
+						for(buffer_cntr=num_bytes; buffer_cntr>1; buffer_cntr--)
+						{
+							tdi_byte = *tms_tdi++;
+							for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+							{
+								TDI = tdi_byte & bit_mask ? 1:0;
+								TCK = 1;
+								TCK = 0;
+							}
+						}
+						break;
+					case PUT_TDI_MASK | GET_TDO_MASK:	// Output only TDI bits while collecting TDO bits.
+						for(buffer_cntr=num_bytes; buffer_cntr>1; buffer_cntr--)
+						{
+							tdi_byte = *tms_tdi++;
+							tdo_byte = 0; // Clear byte for receiving TDO bits.
+							for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+							{
+								if(TDO)
+									tdo_byte |= bit_mask;
+								TDI = tdi_byte & bit_mask ? 1:0;
+								TCK = 1;
+								TCK = 0;
+							}
+							*tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
+						}
+						break;
+					case PUT_TDI_MASK | PUT_TMS_MASK:	// Output both TDI & TMS bits and ignore TDO bits.
+						for(buffer_cntr=num_bytes; buffer_cntr>2; buffer_cntr-=2)
+						{
+							tms_byte = *tms_tdi++;
+							tdi_byte = *tms_tdi++;
+							for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+							{
+								TMS = tms_byte & bit_mask ? 1:0;
+								TDI = tdi_byte & bit_mask ? 1:0;
+								TCK = 1;
+								TCK = 0;
+							}
+						}
+						break;
+					case PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK:	// Output both TDI & TMS bits while collecting TDO bits.
+					default:
+						for(buffer_cntr=num_bytes; buffer_cntr>2; buffer_cntr-=2)
+						{
+							tms_byte = *tms_tdi++;
+							tdi_byte = *tms_tdi++;
+							tdo_byte = 0; // Clear byte for receiving TDO bits.
+							for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+							{
+								if(TDO)
+									tdo_byte |= bit_mask;
+								TMS = tms_byte & bit_mask ? 1:0;
+								TDI = tdi_byte & bit_mask ? 1:0;
+								TCK = 1;
+								TCK = 0;
+							}
+							*tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
+						}
+						break;
+				}
+
+				// Send the last few bits of the last byte of TDI bits.
+				// Compute the number of bits in the final byte of the final packet.
+				// (This computation only works because num_bits != 0.)
+				bit_cntr = num_bits & 0x7;
+				if(bit_cntr==0U)
+					bit_cntr = 8U;
+
+				// Read last TMS & TDI bytes from the packet and transmit them.
+				if(flags & PUT_TMS_MASK)
+					tms_byte = *tms_tdi++;
+                if(flags & PUT_TDI_MASK)
+                    tdi_byte = *tms_tdi;
+                else
+                    tdi_byte = (flags & TDI_VAL_MASK) ? 0xFF : 0x00;
+				tdo_byte = 0; // Clear byte for receiving last TDO bits.
+				for(bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+				{
+					if(TDO)
+						tdo_byte |= bit_mask;
+					if(flags & PUT_TMS_MASK)
+						TMS = tms_byte & bit_mask ? 1:0;
+					TDI = tdi_byte & bit_mask ? 1:0;
+					TCK = 1;
+					TCK = 0;
+				}
+
+				// Send back the final packet of TDO bits.
+				if(flags & GET_TDO_MASK)
+				{
+					*tdo = tdo_byte; // Store last few TDO bits into the outgoing packet.
+       				while(mUSBGenPrimaryTxIsBusy()) ;  // Wait until USB transmitter is not busy.
+					USBGEN_BD_PRIMARY_IN.ADR = tdo_data[data_index];
+                    // If received packets contain both TDI & TMS bits, return TDO packet is half-size (one TDO bit per TDI bit).
+					if(flags & PUT_TMS_MASK)
+					   	USBGEN_BD_PRIMARY_IN.Cnt = num_bytes / 2;
+					else
+					   	USBGEN_BD_PRIMARY_IN.Cnt = num_bytes;
+					USBDriverService();
+				    mUSBBufferReady(USBGEN_BD_PRIMARY_IN);
+				}
+				
+				if((flags & DO_MULTIPLE_PACKETS_MASK) && (flags & PUT_TDI_MASK))
+				{
+					// We have received the last TDI byte in a multi-packet transmission,
+					// so reset the endpoint to the default buffer and re-enable the endpoint.
+					USBGEN_BD_PRIMARY_OUT.ADR = usbgen_primary_out0;
+			        USBGEN_BD_PRIMARY_OUT.Cnt = USBGEN_EP_SIZE;
+					mUSBBufferReady(USBGEN_BD_PRIMARY_OUT);
+				}
+				
+				// Blink the LED a few times after a long command completes.
+				if(blink_counter < MAX_BYTE_VAL-NUM_ACTIVITY_BLINKS)
+					blink_counter = 0;	// Already done enough LED blinks.
+				else
+					blink_counter -= (MAX_BYTE_VAL-NUM_ACTIVITY_BLINKS);	// Do at least the minimum number of blinks.
+
+				break;
+
 			case RUNTEST_CMD:
 				if(dataPacket.num_tck_pulses > DO_DELAY_THRESHOLD)
 				{
@@ -1015,8 +1423,8 @@ void ServiceRequests(void)
 		// The counter indicates the number of data bytes in the outgoing packet.
         if(num_return_bytes != 0U)
         {
-            if(!mUSBGenPrimaryTxIsBusy()) // Send the packet once the transmitter is not busy.
-                USBGenPrimaryWrite((byte*)&dataPacket,num_return_bytes);
+			while(mUSBGenPrimaryTxIsBusy()); // Wait until transmitter is not busy.
+            USBGenPrimaryWrite((byte*)&dataPacket,num_return_bytes); // Now send the packet.
         }//end if
     }//end if
 
@@ -1484,6 +1892,314 @@ void ServiceRequests(void)
 
 				break;
 
+			case TAP_SEQ_CMD:		// Output SEC_TMS & SEC_TDI values; get SEC_TDO value 
+				num_return_bytes = 0;	// This command doesn't return any bytes by the default return routine.
+
+				blink_counter = MAX_BYTE_VAL;	// Blink LED continuously during the (long) duration of this command.
+
+				// The first packet received contains the TAP_SEQ_CMD command and the number
+				// of SEC_TDI bits that will follow in succeeding packets.
+				num_bits = dataPacket.num_bits;
+
+				// Exit if no SEC_TDI bits will follow (this is probably an error...).
+				if(num_bits == 0)
+					break;
+
+				// Get flags from the first packet that indicate how SEC_TMS and SEC_TDO bits are handled.
+				flags = dataPacket.flags;
+
+				// Setup pointers to the ping-pong buffers for getting/returning SEC_TDI/SEC_TDO bits.
+				tdi_data[0] = usbgen_secondary_out0;
+				tdi_data[1] = usbgen_secondary_out1;
+				tdo_data[0] = usbgen_secondary_in0;
+				tdo_data[1] = usbgen_secondary_in1;
+				data_index  = 1;  // Index to the active ping-pong buffers.
+
+				hdr_size = TAP_SEQ_CMD_HDR_LEN;  // Size of the command header in the first packet.
+				tms_tdi  = (byte*)&dataPacket + hdr_size;  // Pointer to SEC_TMS+SEC_TDI bits that follow command bytes in first packet.
+				tdo      = tdo_data[data_index];  // Pointer to buffer for storing SEC_TDO bits.
+
+				// Total number of header+SEC_TMS+SEC_TDI bytes in all the packets for this command.
+				num_bytes = (long)((num_bits+7)/8);
+				if(flags & PUT_TMS_MASK)
+					num_bytes *= 2; // Twice the number of bytes if SEC_TMS bits are also being sent.
+				num_bytes += hdr_size;
+
+                // Initialize SEC_TCK, SEC_TMS and SEC_TDI levels.
+				SEC_TCK = 0;  // Initialize SEC_TCK (should have been low already).
+				if(!(flags & PUT_TMS_MASK))
+					SEC_TMS = (flags & TMS_VAL_MASK) ? 1:0; // No SEC_TMS bits in packets, so set SEC_TMS to the static value indicated in the flag bit.
+				if(!(flags & PUT_TDI_MASK))
+					SEC_TDI = (flags & TDI_VAL_MASK) ? 1:0; // No SEC_TDI bits in packets, so set SEC_TDI to the static value indicated in the flag bit.
+
+				// Process the first M-1 of M packets that are completely filled with SEC_TMS+SEC_TDI bits.
+				flags &= ~DO_MULTIPLE_PACKETS_MASK; // Assume this command uses a single USB packet.
+				for( ; num_bytes > USBGEN_EP_SIZE; num_bytes-=USBGEN_EP_SIZE)
+				{
+					flags |= DO_MULTIPLE_PACKETS_MASK;	// Record that this command extends over multiple USB packets.
+
+					if(blink_counter == 0U)
+						blink_counter = MAX_BYTE_VAL;	// Keep LED blinking during this command to indicate activity.
+
+					// Process the SEC_TMS & SEC_TDI bytes in the packet and collect the SEC_TDO bits.
+					switch(flags & (PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK))
+					{
+                        case GET_TDO_MASK:  // Just gather SEC_TDO bits
+							for(buffer_cntr=USBGEN_EP_SIZE-hdr_size ; buffer_cntr!=0; buffer_cntr--)
+							{
+								tdo_byte = 0; // Clear byte for receiving SEC_TDO bits.
+								for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+								{
+									if(SEC_TDO)
+										tdo_byte |= bit_mask;
+									SEC_TCK = 1;
+									SEC_TCK = 0;
+								}
+								*tdo++ = tdo_byte; // Store received SEC_TDO bits into the outgoing packet.
+							}
+                            break;
+						case PUT_TDI_MASK:	// Just output the SEC_TDI bits.
+							for(buffer_cntr=USBGEN_EP_SIZE-hdr_size ; buffer_cntr!=0; buffer_cntr--)
+							{
+								tdi_byte = *tms_tdi++;
+								for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+								{
+									SEC_TDI = tdi_byte & bit_mask ? 1:0;
+									SEC_TCK = 1;
+									SEC_TCK = 0;
+								}
+							}
+							break;
+						case PUT_TDI_MASK | GET_TDO_MASK:	// Output only SEC_TDI bits while collecting SEC_TDO bits.
+							for(buffer_cntr=USBGEN_EP_SIZE-hdr_size ; buffer_cntr!=0; buffer_cntr--)
+							{
+								tdi_byte = *tms_tdi++;
+								tdo_byte = 0; // Clear byte for receiving SEC_TDO bits.
+								for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+								{
+									if(SEC_TDO)
+										tdo_byte |= bit_mask;
+									SEC_TDI = tdi_byte & bit_mask ? 1:0;
+									SEC_TCK = 1;
+									SEC_TCK = 0;
+								}
+								*tdo++ = tdo_byte; // Store received SEC_TDO bits into the outgoing packet.
+							}
+							break;
+						case PUT_TDI_MASK | PUT_TMS_MASK:	// Output both SEC_TDI & SEC_TMS bits and ignore SEC_TDO bits.
+							for(buffer_cntr=USBGEN_EP_SIZE-hdr_size ; buffer_cntr!=0; buffer_cntr-=2)
+							{
+								tms_byte = *tms_tdi++;
+								tdi_byte = *tms_tdi++;
+								for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+								{
+									SEC_TMS = tms_byte & bit_mask ? 1:0;
+									SEC_TDI = tdi_byte & bit_mask ? 1:0;
+									SEC_TCK = 1;
+									SEC_TCK = 0;
+								}
+							}
+							break;
+						case PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK:	// Output both SEC_TDI & SEC_TMS bits while collecting SEC_TDO bits.
+						default:
+							for(buffer_cntr=USBGEN_EP_SIZE-hdr_size ; buffer_cntr!=0; buffer_cntr-=2)
+							{
+								tms_byte = *tms_tdi++;
+								tdi_byte = *tms_tdi++;
+								tdo_byte = 0; // Clear byte for receiving SEC_TDO bits.
+								for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+								{
+									if(SEC_TDO)
+										tdo_byte |= bit_mask;
+									SEC_TMS = tms_byte & bit_mask ? 1:0;
+									SEC_TDI = tdi_byte & bit_mask ? 1:0;
+									SEC_TCK = 1;
+									SEC_TCK = 0;
+								}
+								*tdo++ = tdo_byte; // Store received SEC_TDO bits into the outgoing packet.
+							}
+							break;
+					}
+
+					// Send all the recorded SEC_TDO bits back in a complete packet.
+					if(flags & GET_TDO_MASK)
+					{
+	       				while(mUSBGenSecondaryTxIsBusy()) ;  // Wait until USB transmitter is not busy.
+						USBGEN_BD_SECONDARY_IN.ADR = tdo_data[data_index];  // Set endpoint pointer to stored SEC_TDO bit buffer.
+                        // If received packets contain both SEC_TDI & SEC_TMS bits, return SEC_TDO packet is half-size (one SEC_TDO bit per SEC_TDI bit).
+						if(flags & PUT_TMS_MASK)
+					    	USBGEN_BD_SECONDARY_IN.Cnt = (USBGEN_EP_SIZE-hdr_size) / 2;
+						else
+					    	USBGEN_BD_SECONDARY_IN.Cnt = (USBGEN_EP_SIZE-hdr_size);
+						USBDriverService();
+				    	mUSBBufferReady(USBGEN_BD_SECONDARY_IN);
+					}
+
+                    if(flags & PUT_TDI_MASK)
+                    {
+    					// Wait until the next packet of SEC_TMS & SEC_TDI bits arrives.
+    					while(mUSBGenSecondaryRxIsBusy()) ;
+    
+    					// Change the buffer address in the endpoint so it will place the next packet of SEC_TDI bits
+    					// in the other ping-pong buffer while the current SEC_TDI packet is sent to the JTAG port.
+    					if(num_bytes-USBGEN_EP_SIZE > USBGEN_EP_SIZE)
+    					{
+    						USBGEN_BD_SECONDARY_OUT.ADR = tdi_data[data_index];	// Change buffer address in endpoint.
+    			        	USBGEN_BD_SECONDARY_OUT.Cnt = USBGEN_EP_SIZE;
+    	     				mUSBBufferReady(USBGEN_BD_SECONDARY_OUT);		// Enable the endpoint to receive more SEC_TMS & SEC_TDI data.
+    					    USBDriverService();
+    					}
+                    }
+
+					data_index ^= 1;  // Point to the next ping-pong buffer.
+					tms_tdi     = tdi_data[data_index];  // Init pointer to the just-received SEC_TMS & SEC_TDI data.
+					tdo         = tdo_data[data_index];  // SEC_TDO data will be written here.
+
+					hdr_size = 0;  // There is no command header in any packets following the first, just SEC_TDI & SEC_TMS bits.
+				}  // First M-1 SEC_TDI packets have been processed.
+
+                // If only one packet was received, this will subtract the number of command header bytes.
+                // Otherwise, the number of bytes is just the number in the last packet.
+				num_bytes -= hdr_size;
+
+				// Process all except the last SEC_TDI byte in the final packet.
+				switch(flags & (PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK))
+				{
+                    case GET_TDO_MASK:  // Just gather SEC_TDO bits
+						for(buffer_cntr=num_bytes; buffer_cntr>1; buffer_cntr--)
+						{
+							tdo_byte = 0; // Clear byte for receiving SEC_TDO bits.
+							for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+							{
+								if(SEC_TDO)
+									tdo_byte |= bit_mask;
+								SEC_TCK = 1;
+								SEC_TCK = 0;
+							}
+							*tdo++ = tdo_byte; // Store received SEC_TDO bits into the outgoing packet.
+						}
+                        break;
+					case PUT_TDI_MASK:	// Just output the SEC_TDI bits.
+						for(buffer_cntr=num_bytes; buffer_cntr>1; buffer_cntr--)
+						{
+							tdi_byte = *tms_tdi++;
+							for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+							{
+								SEC_TDI = tdi_byte & bit_mask ? 1:0;
+								SEC_TCK = 1;
+								SEC_TCK = 0;
+							}
+						}
+						break;
+					case PUT_TDI_MASK | GET_TDO_MASK:	// Output only SEC_TDI bits while collecting SEC_TDO bits.
+						for(buffer_cntr=num_bytes; buffer_cntr>1; buffer_cntr--)
+						{
+							tdi_byte = *tms_tdi++;
+							tdo_byte = 0; // Clear byte for receiving SEC_TDO bits.
+							for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+							{
+								if(SEC_TDO)
+									tdo_byte |= bit_mask;
+								SEC_TDI = tdi_byte & bit_mask ? 1:0;
+								SEC_TCK = 1;
+								SEC_TCK = 0;
+							}
+							*tdo++ = tdo_byte; // Store received SEC_TDO bits into the outgoing packet.
+						}
+						break;
+					case PUT_TDI_MASK | PUT_TMS_MASK:	// Output both SEC_TDI & SEC_TMS bits and ignore SEC_TDO bits.
+						for(buffer_cntr=num_bytes; buffer_cntr>2; buffer_cntr-=2)
+						{
+							tms_byte = *tms_tdi++;
+							tdi_byte = *tms_tdi++;
+							for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+							{
+								SEC_TMS = tms_byte & bit_mask ? 1:0;
+								SEC_TDI = tdi_byte & bit_mask ? 1:0;
+								SEC_TCK = 1;
+								SEC_TCK = 0;
+							}
+						}
+						break;
+					case PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK:	// Output both SEC_TDI & SEC_TMS bits while collecting SEC_TDO bits.
+					default:
+						for(buffer_cntr=num_bytes; buffer_cntr>2; buffer_cntr-=2)
+						{
+							tms_byte = *tms_tdi++;
+							tdi_byte = *tms_tdi++;
+							tdo_byte = 0; // Clear byte for receiving SEC_TDO bits.
+							for(bit_cntr=8, bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+							{
+								if(SEC_TDO)
+									tdo_byte |= bit_mask;
+								SEC_TMS = tms_byte & bit_mask ? 1:0;
+								SEC_TDI = tdi_byte & bit_mask ? 1:0;
+								SEC_TCK = 1;
+								SEC_TCK = 0;
+							}
+							*tdo++ = tdo_byte; // Store received SEC_TDO bits into the outgoing packet.
+						}
+						break;
+				}
+
+				// Send the last few bits of the last byte of SEC_TDI bits.
+				// Compute the number of bits in the final byte of the final packet.
+				// (This computation only works because num_bits != 0.)
+				bit_cntr = num_bits & 0x7;
+				if(bit_cntr==0U)
+					bit_cntr = 8U;
+
+				// Read last SEC_TMS & SEC_TDI bytes from the packet and transmit them.
+				if(flags & PUT_TMS_MASK)
+					tms_byte = *tms_tdi++;
+                if(flags & PUT_TDI_MASK)
+                    tdi_byte = *tms_tdi;
+                else
+                    tdi_byte = (flags & TDI_VAL_MASK) ? 0xFF : 0x00;
+				tdo_byte = 0; // Clear byte for receiving last SEC_TDO bits.
+				for(bit_mask=0x01; bit_cntr!=0; bit_cntr--, bit_mask<<=1)
+				{
+					if(SEC_TDO)
+						tdo_byte |= bit_mask;
+					if(flags & PUT_TMS_MASK)
+						SEC_TMS = tms_byte & bit_mask ? 1:0;
+					SEC_TDI = tdi_byte & bit_mask ? 1:0;
+					SEC_TCK = 1;
+					SEC_TCK = 0;
+				}
+
+				// Send back the final packet of SEC_TDO bits.
+				if(flags & GET_TDO_MASK)
+				{
+					*tdo = tdo_byte; // Store last few SEC_TDO bits into the outgoing packet.
+       				while(mUSBGenSecondaryTxIsBusy()) ;  // Wait until USB transmitter is not busy.
+					USBGEN_BD_SECONDARY_IN.ADR = tdo_data[data_index];
+                    // If received packets contain both SEC_TDI & SEC_TMS bits, return SEC_TDO packet is half-size (one SEC_TDO bit per SEC_TDI bit).
+					if(flags & PUT_TMS_MASK)
+					   	USBGEN_BD_SECONDARY_IN.Cnt = num_bytes / 2;
+					else
+					   	USBGEN_BD_SECONDARY_IN.Cnt = num_bytes;
+					USBDriverService();
+				    mUSBBufferReady(USBGEN_BD_SECONDARY_IN);
+				}
+				
+				if((flags & DO_MULTIPLE_PACKETS_MASK) && (flags & PUT_TDI_MASK))
+				{
+					// We have received the last SEC_TDI byte in a multi-packet transmission,
+					// so reset the endpoint to the default buffer and re-enable the endpoint.
+					USBGEN_BD_SECONDARY_OUT.ADR = usbgen_secondary_out0;
+			        USBGEN_BD_SECONDARY_OUT.Cnt = USBGEN_EP_SIZE;
+					mUSBBufferReady(USBGEN_BD_SECONDARY_OUT);
+				}
+				
+				// Blink the LED a few times after a long command completes.
+				if(blink_counter < MAX_BYTE_VAL-NUM_ACTIVITY_BLINKS)
+					blink_counter = 0;	// Already done enough LED blinks.
+				else
+					blink_counter -= (MAX_BYTE_VAL-NUM_ACTIVITY_BLINKS);	// Do at least the minimum number of blinks.
+
+				break;
+
 			case RUNTEST_CMD:
 				if(dataPacket.num_tck_pulses > DO_DELAY_THRESHOLD)
 				{
@@ -1537,8 +2253,8 @@ void ServiceRequests(void)
 		// The counter indicates the number of data bytes in the outgoing packet.
         if(!flag.disable_sec_return && num_return_bytes != 0U)
         {
-            if(!mUSBGenSecondaryTxIsBusy()) // Send the packet once the transmitter is not busy.
-                USBGenSecondaryWrite((byte*)&dataPacket,num_return_bytes);
+			while(mUSBGenSecondaryTxIsBusy()); // Wait until transmitter is not busy.
+            USBGenSecondaryWrite((byte*)&dataPacket,num_return_bytes); // Now send the packet.
         }//end if
     }//end if
 
