@@ -13,6 +13,7 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=-w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 TraceCmdString=
+DebugOptions=
 [File001]
 Location=C:\TEMP\xsusb_jtag\_output\usbmmap.o
 Folder=Intermediary
@@ -25,6 +26,7 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=-w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 TraceCmdString=
+DebugOptions=
 [File002]
 Location=C:\TEMP\xsusb_jtag\_output\usbdrv.o
 Folder=Intermediary
@@ -37,6 +39,7 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=-w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 TraceCmdString=
+DebugOptions=
 [File003]
 Location=C:\TEMP\xsusb_jtag\_output\usb9.o
 Folder=Intermediary
@@ -49,6 +52,7 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=-w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 TraceCmdString=
+DebugOptions=
 [File004]
 Location=C:\TEMP\xsusb_jtag\_output\usbdsc.o
 Folder=Intermediary
@@ -61,6 +65,7 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=-w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 TraceCmdString=
+DebugOptions=
 [File005]
 Location=C:\TEMP\xsusb_jtag\_output\usbctrltrf.o
 Folder=Intermediary
@@ -73,6 +78,7 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=-w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 TraceCmdString=
+DebugOptions=
 [File006]
 Location=C:\TEMP\xsusb_jtag\_output\user.o
 Folder=Intermediary
@@ -85,6 +91,7 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=-w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 TraceCmdString=
+DebugOptions=
 [File007]
 Location=C:\TEMP\xsusb_jtag\_output\usbgen.o
 Folder=Intermediary
@@ -97,6 +104,7 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=-w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 TraceCmdString=
+DebugOptions=
 [File008]
 Location=C:\TEMP\xsusb_jtag\_output\configbits.o
 Folder=Intermediary
@@ -109,6 +117,7 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=-w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 TraceCmdString=
+DebugOptions=
 [File009]
 Location=C:\TEMP\xsusb_jtag\xsusb_jtag.cof
 Folder=Output
@@ -121,19 +130,8 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=/m"$(BINDIR_)$(TARGETBASE).map" /o"$(TARGETBASE).cof"
 TraceCmdString=
+DebugOptions=
 [File010]
-Location=C:\TEMP\xsusb_jtag\xsusb_jtag.cod
-Folder=Output
-DeviceName=PIC18F4455
-LanguageToolSuiteID={5B7D72DD-9861-47BD-9F60-2BE967BF8416}
-LanguageToolID={96C98149-AA1B-4CF9-B967-FAE79CAB663C}
-LanguageToolLocation=C:\MCC18\bin\mplink.exe
-PPAD=$(BINDIR)|_output||$(TMPDIR)|_output||$(AINDIR)||$(INCDIR)|C:\MCC18\h;C:\TEMP\xsusb_jtag||$(LIBDIR)|\mcc18\lib||$(LKRDIR)||
-SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb9\usb9.c|autofiles\usbdsc.c|system\usb\usbctrltrf\usbctrltrf.c|user\user.c|system\usb\class\generic\usbgen.c|configbits.c||<obj>||<lib>||<lkr>|rm18f4455.lkr||
-SuiteArgsString=
-ToolArgsString=/m"$(BINDIR_)$(TARGETBASE).map" /o"$(TARGETBASE).cof"
-TraceCmdString=
-[File011]
 Location=C:\TEMP\xsusb_jtag\xsusb_jtag.hex
 Folder=Output
 DeviceName=PIC18F4455
@@ -145,6 +143,20 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=/m"$(BINDIR_)$(TARGETBASE).map" /o"$(TARGETBASE).cof"
 TraceCmdString=
+DebugOptions=
+[File011]
+Location=C:\TEMP\xsusb_jtag\xsusb_jtag.cod
+Folder=Output
+DeviceName=PIC18F4455
+LanguageToolSuiteID={5B7D72DD-9861-47BD-9F60-2BE967BF8416}
+LanguageToolID={96C98149-AA1B-4CF9-B967-FAE79CAB663C}
+LanguageToolLocation=C:\MCC18\bin\mplink.exe
+PPAD=$(BINDIR)|_output||$(TMPDIR)|_output||$(AINDIR)||$(INCDIR)|C:\MCC18\h;C:\TEMP\xsusb_jtag||$(LIBDIR)|\mcc18\lib||$(LKRDIR)||
+SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb9\usb9.c|autofiles\usbdsc.c|system\usb\usbctrltrf\usbctrltrf.c|user\user.c|system\usb\class\generic\usbgen.c|configbits.c||<obj>||<lib>||<lkr>|rm18f4455.lkr||
+SuiteArgsString=
+ToolArgsString=/m"$(BINDIR_)$(TARGETBASE).map" /o"$(TARGETBASE).cof"
+TraceCmdString=
+DebugOptions=
 [File012]
 Location=C:\TEMP\xsusb_jtag\xsusb_jtag.lst
 Folder=Output
@@ -157,6 +169,7 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=/m"$(BINDIR_)$(TARGETBASE).map" /o"$(TARGETBASE).cof"
 TraceCmdString=
+DebugOptions=
 [File013]
 Location=C:\TEMP\xsusb_jtag\xsusb_jtag.map
 Folder=Output
@@ -169,6 +182,7 @@ SOLK=<src>|main.c|system\usb\usbmmap.c|system\usb\usbdrv\usbdrv.c|system\usb\usb
 SuiteArgsString=
 ToolArgsString=/m"$(BINDIR_)$(TARGETBASE).map" /o"$(TARGETBASE).cof"
 TraceCmdString=
+DebugOptions=
 [TOOL_LOC_STAMPS]
 tool_loc{96C98149-AA1B-4CF9-B967-FAE79CAB663C}=C:\MCC18\bin\mplink.exe
 tool_loc{E56A1C86-9D32-4DF6-8C34-FE0388B1B644}=C:\MCC18\bin\mcc18.exe
