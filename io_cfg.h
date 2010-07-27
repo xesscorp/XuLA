@@ -62,8 +62,8 @@
 #endif
 
 /** L E D ***********************************************************/
-#define mInitAllLEDs()      LATDbits.LATD3 = 0; TRISDbits.TRISD3 = 0;
-#define mLED                LATDbits.LATD3
+#define mInitAllLEDs()      LATCbits.LATC5 = 0; TRISCbits.TRISC5 = 0;
+#define mLED                LATCbits.LATC5
 #define mLED_On()           mLED = 1;
 #define mLED_Off()          mLED = 0;
 #define mLED_Toggle()       mLED = !mLED;

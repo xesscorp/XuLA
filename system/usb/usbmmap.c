@@ -161,7 +161,7 @@ byte usb_alt_intf[MAX_NUM_INT]; // Array to keep track of the current alternate
                                 // setting for each interface ID
 
 /** U S B  F I X E D  L O C A T I O N  V A R I A B L E S *********************/
-#pragma udata usbram=0x400     //See Linker Script,usb:0x400-0x7FF
+#pragma udata usbram=0x200     //See Linker Script
 
 /******************************************************************************
  * Section A: Buffer Descriptor Table
@@ -277,10 +277,6 @@ volatile far byte usbgen_primary_out0[USBGEN_EP_SIZE];
 volatile far byte usbgen_primary_out1[USBGEN_EP_SIZE];
 volatile far byte usbgen_primary_in0[USBGEN_EP_SIZE];
 volatile far byte usbgen_primary_in1[USBGEN_EP_SIZE];
-volatile far byte usbgen_secondary_out0[USBGEN_EP_SIZE];
-volatile far byte usbgen_secondary_out1[USBGEN_EP_SIZE];
-volatile far byte usbgen_secondary_in0[USBGEN_EP_SIZE];
-volatile far byte usbgen_secondary_in1[USBGEN_EP_SIZE];
 #pragma udata
 
 /** EOF usbmmap.c ************************************************************/

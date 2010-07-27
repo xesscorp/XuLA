@@ -67,11 +67,9 @@
 #define USBGEN_PRIMARY_UEP      UEP1
 #define USBGEN_BD_PRIMARY_OUT   ep1Bo
 #define USBGEN_BD_PRIMARY_IN    ep1Bi
-#define USBGEN_SECONDARY_UEP    UEP2
-#define USBGEN_BD_SECONDARY_OUT ep2Bo
-#define USBGEN_BD_SECONDARY_IN  ep2Bi
-#define USBGEN_EP_SIZE          64
+//#define USBGEN_EP_SIZE          64
+#define USBGEN_EP_SIZE          32
 
-#define MAX_EP_NUMBER           2           // UEP2
+#define MAX_EP_NUMBER           1           // UEP1
 
 #endif //USBCFG_H

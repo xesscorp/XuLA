@@ -44,7 +44,6 @@
 /** V A R I A B L E S ********************************************************/
 #pragma udata
 byte usbgen_primary_rx_len;
-byte usbgen_secondary_rx_len;
 
 /** P R I V A T E  P R O T O T Y P E S ***************************************/
 
@@ -75,10 +74,8 @@ byte usbgen_secondary_rx_len;
 void USBGenInitEP(void)
 {   
     usbgen_primary_rx_len = 0;
-    usbgen_secondary_rx_len = 0;
     
     USBGEN_PRIMARY_UEP   = EP_OUT_IN|HSHK_EN; // Enable primary in & out pipes
-    USBGEN_SECONDARY_UEP = EP_OUT_IN|HSHK_EN; // Enable secondary in & out pipes
 
     /*
      * Do not have to init Cnt of IN pipes here.
@@ -97,13 +94,6 @@ void USBGenInitEP(void)
 
     USBGEN_BD_PRIMARY_IN.ADR = (byte*)&usbgen_primary_in0;      // Set buffer address
     USBGEN_BD_PRIMARY_IN.Stat._byte = _UCPU|_DAT1;      // Set buffer status
-
-    USBGEN_BD_SECONDARY_OUT.Cnt = sizeof(usbgen_secondary_out0);     // Set buffer size
-    USBGEN_BD_SECONDARY_OUT.ADR = (byte*)&usbgen_secondary_out0;     // Set buffer address
-    USBGEN_BD_SECONDARY_OUT.Stat._byte = _USIE|_DAT0|_DTSEN;// Set status
-
-    USBGEN_BD_SECONDARY_IN.ADR = (byte*)&usbgen_secondary_in0;      // Set buffer address
-    USBGEN_BD_SECONDARY_IN.Stat._byte = _UCPU|_DAT1;      // Set buffer status
 
 }//end USBGenInitEP
 
@@ -159,29 +149,6 @@ void USBGenPrimaryWrite(byte *buffer, byte len)
     mUSBBufferReady(USBGEN_BD_PRIMARY_IN);
 
 }//end USBGenPrimaryWrite
-
-void USBGenSecondaryWrite(byte *buffer, byte len)
-{
-	byte i;
-	
-    /*
-     * Value of len should be equal to or smaller than USBGEN_EP_SIZE.
-     * This check forces the value of len to meet the precondition.
-     */
-	if(len > USBGEN_EP_SIZE)
-	    len = USBGEN_EP_SIZE;
-
-   /*
-    * Copy data from user's buffer to dual-ram buffer
-    */
-    for (i = 0; i < len; i++)
-    	usbgen_secondary_in0[i] = buffer[i];
-
-	USBGEN_BD_SECONDARY_IN.ADR = usbgen_secondary_in0;
-    USBGEN_BD_SECONDARY_IN.Cnt = len;
-    mUSBBufferReady(USBGEN_BD_SECONDARY_IN);
-
-}//end USBGenSecondaryWrite
 
 /******************************************************************************
  * Function:        byte USBGenRead(byte *buffer, byte len)
@@ -245,36 +212,6 @@ byte USBGenPrimaryRead(byte *buffer, byte len)
     return usbgen_primary_rx_len;
 
 }//end USBGenPrimaryRead
-
-byte USBGenSecondaryRead(byte *buffer, byte len)
-{
-    usbgen_secondary_rx_len = 0;
-    
-    if(!mUSBGenSecondaryRxIsBusy())
-    {
-        /*
-         * Adjust the expected number of bytes to equal
-         * the actual number of bytes received.
-         */
-        if(len > USBGEN_BD_SECONDARY_OUT.Cnt)
-            len = USBGEN_BD_SECONDARY_OUT.Cnt;
-        
-        /*
-         * Copy data from dual-ram buffer to user's buffer
-         */
-        for(usbgen_secondary_rx_len = 0; usbgen_secondary_rx_len < len; usbgen_secondary_rx_len++)
-            buffer[usbgen_secondary_rx_len] = usbgen_secondary_out0[usbgen_secondary_rx_len];
-
-        /*
-         * Prepare dual-ram buffer for next OUT transaction
-         */
-        USBGEN_BD_SECONDARY_OUT.Cnt = sizeof(usbgen_secondary_out0);
-        mUSBBufferReady(USBGEN_BD_SECONDARY_OUT);
-    }//end if
-
-    return usbgen_secondary_rx_len;
-
-}//end USBGenSecondaryRead
 
 #endif //def USB_USE_GEN
 

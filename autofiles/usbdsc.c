@@ -195,7 +195,7 @@ rom USB_DEV_DSC device_dsc=
     0x04D8,                 // Vendor ID (Microchip)
     0x000C,                 // Product ID: PICDEM FS USB Board
 #endif
-    0x0104,                 // Device release number in BCD format (put firmware version here and in user.c!!)
+    0x0105,                 // Device release number in BCD format (put firmware version here and in user.c!!)
     0x01,                   // Manufacturer string index
     0x02,                   // Product string index
     0x00,                   // Device serial number string index

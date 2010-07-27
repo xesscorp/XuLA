@@ -59,7 +59,6 @@
  * Note:            None
  *****************************************************************************/
 #define mUSBGenPrimaryRxIsBusy()     USBGEN_BD_PRIMARY_OUT.Stat.UOWN
-#define mUSBGenSecondaryRxIsBusy()   USBGEN_BD_SECONDARY_OUT.Stat.UOWN
 
 /******************************************************************************
  * Macro:           (bit) mUSBGenTxIsBusy(void)
@@ -79,7 +78,6 @@
  * Note:            None
  *****************************************************************************/
 #define mUSBGenPrimaryTxIsBusy()      USBGEN_BD_PRIMARY_IN.Stat.UOWN
-#define mUSBGenSecondaryTxIsBusy()    USBGEN_BD_SECONDARY_IN.Stat.UOWN
 
 /******************************************************************************
  * Macro:           byte mUSBGenGetRxLength(void)
@@ -99,19 +97,15 @@
  * Note:            None
  *****************************************************************************/
 #define mUSBGenPrimaryGetRxLength()     usbgen_primary_rx_len
-#define mUSBGenSecondaryGetRxLength()   usbgen_secondary_rx_len
 
 /** S T R U C T U R E S ******************************************************/
 
 /** E X T E R N S ************************************************************/
 extern byte usbgen_primary_rx_len;
-extern byte usbgen_secondary_rx_len;
 
 /** P U B L I C  P R O T O T Y P E S *****************************************/
 void USBGenInitEP(void);
 void USBGenPrimaryWrite(byte *buffer, byte len);
-void USBGenSecondaryWrite(byte *buffer, byte len);
 byte USBGenPrimaryRead(byte *buffer, byte len);
-byte USBGenSecondaryRead(byte *buffer, byte len);
 
 #endif //USBGEN_H

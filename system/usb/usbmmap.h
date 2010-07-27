@@ -170,9 +170,5 @@ extern volatile far byte usbgen_primary_out0[USBGEN_EP_SIZE];
 extern volatile far byte usbgen_primary_out1[USBGEN_EP_SIZE];
 extern volatile far byte usbgen_primary_in0[USBGEN_EP_SIZE];
 extern volatile far byte usbgen_primary_in1[USBGEN_EP_SIZE];
-extern volatile far byte usbgen_secondary_out0[USBGEN_EP_SIZE];
-extern volatile far byte usbgen_secondary_out1[USBGEN_EP_SIZE];
-extern volatile far byte usbgen_secondary_in0[USBGEN_EP_SIZE];
-extern volatile far byte usbgen_secondary_in1[USBGEN_EP_SIZE];
 
 #endif //USBMMAP_H
