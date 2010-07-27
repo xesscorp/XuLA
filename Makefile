@@ -4,9 +4,9 @@ TARGET = xsusb_jtag
 
 TOOLDIR = \mcc18
 CC = $(TOOLDIR)\bin\mcc18
-CCFLAGS = -fe=$(TARGET).err -w1 -p=18F4455 -I=$(TOOLDIR)\h -I=. -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
+CCFLAGS = -fe=$(TARGET).err -w1 -p=18F14K50 -I=$(TOOLDIR)\h -I=. -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 LINKER = $(TOOLDIR)\bin\mplink
-LINKERFLAGS = /w /x /l$(TOOLDIR)\lib rm18f4455.lkr
+LINKERFLAGS = /w /x /u_CRUNTIME /l$(TOOLDIR)\lib 18f14k50_g.lkr 
 MAKEHEX = $(TOOLDIR)\bin\mp2hex
 MAKEDEP = makedepend
 MAKEDEPFLAGS = -I$(TOOLDIR)/h -I. -o.o
