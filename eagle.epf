@@ -1,0 +1,29 @@
+[Eagle]
+Version="05 10 00"
+Platform="Windows"
+Serial="652B3B7DF7-LSR-WLM-1CP"
+Globals="Globals"
+Desktop="Desktop"
+
+[Globals]
+AutoSaveProject=1
+UsedLibrary="c:/xesscorp/eagle_pcb/xess_lbr/pinhead.lbr"
+UsedLibrary="c:/xesscorp/eagle_pcb/xess_lbr/rcl.lbr"
+UsedLibrary="c:/xesscorp/eagle_pcb/xess_lbr/switch-dil.lbr"
+UsedLibrary="c:/xesscorp/eagle_pcb/xess_lbr/switch-omron.lbr"
+UsedLibrary="c:/xesscorp/eagle_pcb/xess_lbr/xess-xilinx.lbr"
+UsedLibrary="c:/xesscorp/eagle_pcb/xess_lbr/xess.lbr"
+UsedLibrary="c:/xesscorp/eagle_pcb/xess_lbr/xsa-200.lbr"
+UsedLibrary="c:/xesscorp/eagle_pcb/xess_lbr/xsa-2vp.lbr"
+UsedLibrary="c:/xesscorp/eagle_pcb/xess_lbr/xsb-3s.lbr"
+UsedLibrary="C:/Program Files/EAGLE-5.10.0/lbr/frames.lbr"
+
+[Win_1]
+Type="Control Panel"
+Loc="636 74 1505 962"
+State=2
+Number=0
+
+[Desktop]
+Screen="3840 1200"
+Window="Win_1"
