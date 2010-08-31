@@ -161,11 +161,11 @@ byte usb_alt_intf[MAX_NUM_INT]; // Array to keep track of the current alternate
                                 // setting for each interface ID
 
 /** U S B  F I X E D  L O C A T I O N  V A R I A B L E S *********************/
-#pragma udata usbram4=0x400     //See Linker Script,usb4:0x400-0x4FF(256-byte)
+#pragma udata usbram=0x200     // 0x200-0x2FF(256-byte)
 
 /******************************************************************************
  * Section A: Buffer Descriptor Table
- * - 0x400 - 0x4FF(max)
+ * - 0x200 - 0x2FF(max)
  * - MAX_EP_NUMBER is defined in autofiles\usbcfg.h
  * - BDT data type is defined in system\usb\usbmmap.h
  *****************************************************************************/

@@ -1,12 +1,12 @@
 # Manually-generated makefile.
 
-TARGET = xsusb_boot
+TARGET = XuLA_boot
 
 TOOLDIR = \mcc18
 CC = $(TOOLDIR)\bin\mcc18
-CCFLAGS = -fe=$(TARGET).err -w1 -p=18F4455 -I=$(TOOLDIR)\h -I=.  -scs -Opa-
+CCFLAGS = -fe=$(TARGET).err -w1 -p=18f14k50 -I=$(TOOLDIR)\h -I=.  -scs -Opa-
 LINKER = $(TOOLDIR)\bin\mplink
-LINKERFLAGS = /w /x /l$(TOOLDIR)\lib $(TOOLDIR)\bin\LKR\18f4455_g.lkr /u_CRUNTIME 
+LINKERFLAGS = /w /x /l$(TOOLDIR)\lib $(TOOLDIR)\bin\LKR\18f14k50_g.lkr /u_CRUNTIME 
 MAKEHEX = $(TOOLDIR)\bin\mp2hex
 MAKEDEP = makedepend
 MAKEDEPFLAGS = -I$(TOOLDIR)/h -I. -o.o
@@ -24,12 +24,12 @@ $(TARGET).hex : $(OBJECT)
 	$(LINKER) $(LINKERFLAGS) $(OBJECT) /m$(TARGET).map /o$(TARGET).cof
 	$(MAKEHEX) /r 0x0000-0x07FF $(TARGET).cof 
 
-..\xsusb_jtag\xsusb_jtag.hex :
-	$(MAKE) -C ../xsusb_jtag
+..\usb_jtag\XuLA_jtag.hex :
+	$(MAKE) -C ../XuLA_jtag
 
-total : $(TARGET).hex ..\xsusb_jtag\xsusb_jtag.hex
+total : $(TARGET).hex ..\usb_jtag\XuLA_jtag.hex
 	head --lines=-1 $(TARGET).hex > total.hex
-	cat ../xsusb_jtag/xsusb_jtag.hex >> total.hex
+	cat ../usb_jtag/XuLA_jtag.hex >> total.hex
 
 %.o : %.c
 	$(CC) $(CCFLAGS) $*.c -fo=$@

@@ -1,49 +1,61 @@
 //*********************************************************************
-// Module Name: main.c
+// Copyright (C) 2010 Dave Vanden Bout / XESS Corp. / www.xess.com
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or (at
+// your option) any later version.
 //
-// Copyright 2007 X Engineering Software Systems Corp.
-// All rights reserved.
+// This program is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
+//
+//====================================================================
 //
 // Module Description:
-// Configuration settings for the Microchip device.
+//  Configuration bit settings.
 //
-// Revision: $Id$
 //********************************************************************
 
-#pragma	config	PLLDIV  = 6			// 24 MHz / 6 = 4 MHz input to PLL
-#pragma	config	CPUDIV  = OSC1_PLL2	// CPU clock = 96 MHz PLL output / 2 = 48 MHz
-#pragma	config	USBDIV  = 2			// USB clock = 96 MHz PLL output / 2 = 48 MHz
-#pragma	config	FOSC    = HSPLL_HS	// HS oscillator, PLL enabled, HS used by USB	
-#pragma	config	FCMEN   = OFF		// Fail-safe clock monitor enable/disable
-#pragma	config	IESO    = OFF		// Internal/external osc. switchover enable/disable
-#pragma config	PWRT    = ON		// Power-up timer enable/disable
-#pragma	config	BOR     = ON		// Brown-out reset enable/disable
-#pragma	config	BORV    = 1			// Brown-out voltage: 0=max, 3=min
-#pragma	config	VREGEN  = ON		// USB voltage regulator enable/disable
-#pragma	config	WDT     = OFF		// Watchdog timer enable/disable
-#pragma	config	WDTPS   = 32768		// Watchdog timer postscaler
-#pragma	config	MCLRE   = ON		// MCLR pin enable/disable
-#pragma	config	LPT1OSC = OFF		// Low-power Timer1 osc. enable/disable
-#pragma	config	PBADEN  = OFF		// PORTB ADC enable/disable
-#pragma	config	CCP2MX  = ON		// CCP2 MUX: OFF=CCP2 I/O->RB3,ON=CCP2 I/O->RC1
-#pragma	config	STVREN  = ON		// Stack full/underflow reset enable/disable
-#pragma	config	LVP     = OFF		// Low-voltage ICSP enable/disable
-#pragma	config	ICPRT   = OFF		// ICPORT enable/disable
-#pragma	config	XINST   = OFF		// Extended instruction set enable/disable
-#pragma	config	DEBUG   = OFF		// DEBUG port on RB6,RB7 enable/disable
-#pragma	config	CP0     = OFF		// 0x0800-0x1FFF code-protect enable/disable
-#pragma	config	CP1     = OFF		// 0x2000-0x3FFF code-protect enable/disable
-#pragma	config	CP2     = OFF		// 0x4000-0x5FFF code-protect enable/disable
-#pragma	config	CPB     = OFF		// 0x0000-0x07FF code-protect enable/disable
-#pragma	config	CPD     = OFF		// EEPROM code-protect enable/disable
-#pragma	config	WRT0    = OFF		// 0x0800-0x1FFF write-protect enable/disable
-#pragma	config	WRT1    = OFF		// 0x2000-0x3FFF write-protect enable/disable
-#pragma	config	WRT2    = OFF		// 0x4000-0x5FFF write-protect enable/disable
-#pragma	config	WRTB    = ON		// 0x0000-0x07FF write-protect enable/disable
-#pragma	config	WRTC    = OFF		// Configuration register write-protect enable/disable
-#pragma	config	WRTD    = OFF		// EEPROM write-protect enable/disable
-#pragma	config	EBTR0   = OFF		// 0x0800-0x1FFF table read-protect enable/disable
-#pragma	config	EBTR1   = OFF		// 0x2000-0x3FFF table read-protect enable/disable
-#pragma	config	EBTR2   = OFF		// 0x4000-0x5FFF table read-protect enable/disable
-#pragma	config	EBTRB   = OFF		// 0x0000-0x07FF table read-protect enable/disable
-		
+#pragma config  CPUDIV  = NOCLKDIV  // CPU gets the same 48 MHz clock as the USB block
+#pragma config  USBDIV  = OFF       // Doesn't really matter since we are using high-speed USB
+#pragma config  FOSC    = HS        // Use an external 12 MHz crystal
+#pragma config  PLLEN   = ON        // Multiply 12 MHz up to 48 MHz
+#pragma config  PCLKEN  = ON        // Enable primary clock
+#pragma config  FCMEN   = OFF       // Disable fail-safe clock monitor
+#pragma config  IESO    = OFF       // Disable two-speed startup
+#pragma config  PWRTEN  = ON        // Enable delay upon power-up
+#pragma config  BOREN   = SBORDIS   // Hardware brown-out detection enabled
+#pragma config  BORV    = 30        // Brown-out level: 30=3.0V, 27=2.7V, 22=2.2V, 19=1.9V
+#pragma config  WDTEN   = OFF       // Disable watch-dog timer
+#pragma config  WDTPS   = 32768     // Watch-dog timer postscaler
+#pragma config  MCLRE   = ON        // Enable MCLR pin
+#pragma config  HFOFST  = OFF       // HFINTOSC is not used, so who cares about fast start-up
+#pragma config  STVREN  = ON        // Stack overflow causes a reset
+#pragma config  LVP     = OFF       // No low-voltage programming
+#pragma config  BBSIZ   = ON        // Set boot block size to 4 KB (2 KW)
+#pragma config  XINST   = OFF       // Disable extended instructions
+
+// Boot block (0x0000 - 0x07FF)
+#pragma config  CPB     = OFF
+#pragma config  WRTB    = ON        // Write-protect boot block
+#pragma config  EBTRB   = OFF
+
+// Block 0 (0x0800 - 0x0FFF)
+#pragma config  CP0     = OFF
+#pragma config  WRT0    = OFF
+#pragma config  EBTR0   = OFF
+
+// Block 1 (0x1000 - 0x1FFF)
+#pragma config  CP1     = OFF
+#pragma config  WRT1    = OFF
+#pragma config  EBTR1   = OFF
+
+// Data EEPROM
+#pragma config  CPD     = OFF
+#pragma config  WRTD    = OFF

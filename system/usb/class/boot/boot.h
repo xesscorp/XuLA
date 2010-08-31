@@ -64,7 +64,8 @@
 /****** Processor Specific Definitions ******************************/
 
 #if defined(__18F2455) || defined(__18F2550) ||\
-    defined(__18F4455)|| defined(__18F4550)
+    defined(__18F4455)|| defined(__18F4550) ||\
+    defined(__18F14K50)
 
    /****** Remapped Vectors ********************
     *   _____________________

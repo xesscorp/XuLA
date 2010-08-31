@@ -1,14 +1,26 @@
 //*********************************************************************
-// Module Name: main.c
+// Copyright (C) 2010 Dave Vanden Bout / XESS Corp. / www.xess.com
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or (at
+// your option) any later version.
 //
-// Copyright 2007 X Engineering Software Systems Corp.
-// All rights reserved.
+// This program is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
+//
+//====================================================================
 //
 // Module Description:
-// This module starts the USB-to-JTAG interface or else it controls
-// the programming of the flash with a new program.
+//  This module starts the USB-to-JTAG interface or else it controls
+//  the programming of the flash with a new program.
 //
-// Revision: $Id$
 //********************************************************************
 
 /** I N C L U D E S **********************************************************/
@@ -59,28 +71,18 @@ void _low_ISR (void)
  *****************************************************************************/
 void main(void)
 {
-//	byte temp;
-//	temp = ADCON1;
-	ADCON1 |= 0x0F;
+    TRISC = 0b11010111; // Outputs: LED and FPGA PROG#
+    mProg_b = 0; // Keep FPGA in reset state by holding PROG# low
 
-	// enable PORTB pullups so RB5 pullup can also pullup RE1 on XSUSB 1.1 boards
-	INTCON2bits.NOT_RBPU = 0;	// enable PORTB pullups
-	LATBbits.LATB5 = 1;
-    //TRISBbits.TRISB5 = 1;     // Reset value is already '1'
-
-    //TRISBbits.TRISB4 = 1;     // Reset value is already '1'
-    
-    //Check Bootload Mode Entry Condition
-    if(PORTEbits.RE1 == 1)      // If not pulled low, then User Mode
-    {
-		INTCON2bits.NOT_RBPU = 1;	// disable PORTB pullups
-//		ADCON1 = temp;          // Restore reset value
+    //Check to see if firmware is being updated.
+    mInitFMWUpdate_b();
+    if(mFMWUpdate_b == 1)
+    { // If no shunt on FMW jumper, then go into user mode
         _asm goto RM_RESET_VECTOR _endasm
     }//end if
-	INTCON2bits.NOT_RBPU = 1;	// disable PORTB pullups
     
-    //Bootload Mode
-	mInitAllLEDs();
+    // Shunt on FMW jumper, so enter boot mode
+//	mInitAllLEDs();
     mInitializeUSBDriver();     // See usbdrv.h
     USBCheckBusStatus();        // Modified to always enable USB module
     while(1)

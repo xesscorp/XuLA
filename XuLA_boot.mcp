@@ -1,14 +1,14 @@
 [HEADER]
 magic_cookie={66E99B07-E706-4689-9E80-9B2582898A13}
 file_version=1.0
-device=PIC18F4455
+device=PIC18F14K50
 [PATH_INFO]
 BuildDirPolicy=BuildDirIsProjectDir
 dir_src=
 dir_bin=_output
 dir_tmp=_output
 dir_sin=
-dir_inc=C:\MCC18\h;C:\TEMP\xsusb_boot
+dir_inc=C:\MCC18\h;C:\xesscorp\PRODUCTS\USB_firmware\usb_boot
 dir_lib=c:\mcc18\lib
 dir_lkr=
 [CAT_FILTERS]
@@ -40,6 +40,7 @@ file_012=.
 file_013=.
 file_014=.
 file_015=.
+file_016=.
 [GENERATED_FILES]
 file_000=no
 file_001=no
@@ -57,6 +58,7 @@ file_012=no
 file_013=no
 file_014=no
 file_015=no
+file_016=no
 [OTHER_FILES]
 file_000=no
 file_001=no
@@ -74,6 +76,7 @@ file_012=no
 file_013=no
 file_014=no
 file_015=no
+file_016=no
 [FILE_INFO]
 file_000=main.c
 file_001=system\usb\usbmmap.c
@@ -90,13 +93,14 @@ file_011=system\usb\usb.h
 file_012=system\typedefs.h
 file_013=autofiles\usbdsc.h
 file_014=system\usb\class\boot\boot.h
-file_015=C:\MCC18\bin\LKR\18f4455_g.lkr
+file_015=system\usb\usbdrv\usbdrv.h
+file_016=C:\MCC18\bin\LKR\18f14k50_g.lkr
 [SUITE_INFO]
 suite_guid={5B7D72DD-9861-47BD-9F60-2BE967BF8416}
 suite_state=
 [TOOL_SETTINGS]
 TS{DD2213A8-6310-47B1-8376-9430CDFC013F}=
-TS{BFD27FBA-4A02-4C0E-A5E5-B812F3E7707C}=/m"$(BINDIR_)$(TARGETBASE).map" /o"$(TARGETBASE).cof"
+TS{BFD27FBA-4A02-4C0E-A5E5-B812F3E7707C}=/m"$(BINDIR_)$(TARGETBASE).map" /o"$(BINDIR_)$(TARGETBASE).cof"
 TS{C2AF05E7-1416-4625-923D-E114DB6E2B96}=-scs -Opa-
 TS{ADE93A55-C7C7-4D4D-A4BA-59305F7D0391}=
 [INSTRUMENTED_TRACE]

@@ -1,48 +1,27 @@
-/*********************************************************************
- *
- *                Microchip USB C18 Firmware Version 1.0
- *
- *********************************************************************
- * FileName:        io_cfg.h
- * Dependencies:    See INCLUDES section below
- * Processor:       PIC18
- * Compiler:        C18 2.30.01+
- * Company:         Microchip Technology, Inc.
- *
- * Software License Agreement
- *
- * The software supplied herewith by Microchip Technology Incorporated
- * (the “Company”) for its PICmicro® Microcontroller is intended and
- * supplied to you, the Company’s customer, for use solely and
- * exclusively on Microchip PICmicro Microcontroller products. The
- * software is owned by the Company and/or its supplier, and is
- * protected under applicable copyright laws. All rights are reserved.
- * Any use in violation of the foregoing restrictions may subject the
- * user to criminal sanctions under applicable laws, as well as to
- * civil liability for the breach of the terms and conditions of this
- * license.
- *
- * THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
- * WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
- * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
- * PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
- * IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL OR
- * CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
- *
- * Author               Date        Comment
- *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * Rawin Rojvanit       11/19/04     Original.
- ********************************************************************/
-
-/******************************************************************************
- * -io_cfg.h-
- * I/O Configuration File
- * The purpose of this file is to provide a mapping mechanism between
- * pin functions and pin assignments. This provides a layer of abstraction
- * for the firmware code and eases the migration process from one target
- * board design to another.
- *
- *****************************************************************************/
+//*********************************************************************
+// Copyright (C) 2010 Dave Vanden Bout / XESS Corp. / www.xess.com
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or (at
+// your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
+//
+//====================================================================
+//
+// Module Description:
+//  This module maps pins to their functions.  This provides a layer
+//  of abstraction.
+//
+//********************************************************************
 
 #ifndef IO_CFG_H
 #define IO_CFG_H
@@ -71,9 +50,17 @@
 #define self_power          1
 #endif
 
+/** Firmware update jumper sense ************************************/
+#define mInitFMWUpdate_b()  LATBbits.LATB7 = 1; TRISBbits.TRISB7 = INPUT_PIN; INTCON2bits.NOT_RABPU = 0;
+#define mFMWUpdate_b        PORTBbits.RB7
+
+/** FPGA PROG# pin control ******************************************/
+#define mInitProg_b()       LATCbits.LATC3 = 0; TRISCbits.TRISC3 = OUTPUT_PIN;
+#define mProg_b             LATCbits.LATC3
+
 /** L E D ***********************************************************/
-#define mInitAllLEDs()      LATDbits.LATD3 = 0; TRISDbits.TRISD3 = 0;
-#define mLED                LATDbits.LATD3
+#define mInitAllLEDs()      LATCbits.LATC5 = 0; TRISCbits.TRISC5 = OUTPUT_PIN;
+#define mLED                LATCbits.LATC5
 #define mLED_On()           mLED = 1;
 #define mLED_Off()          mLED = 0;
 #define mLED_Toggle()       mLED = !mLED;
