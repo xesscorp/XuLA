@@ -1,10 +1,10 @@
 # Manually-generated makefile.
 
-TARGET = xsusb_jtag
+TARGET = XuLA_jtag
 
 TOOLDIR = \mcc18
 CC = $(TOOLDIR)\bin\mcc18
-CCFLAGS = -fe=$(TARGET).err -w1 -p=18F14K50 -I=$(TOOLDIR)\h -I=. -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
+CCFLAGS = -fe=$(TARGET).err -w1 -p=18f14k50 -I=$(TOOLDIR)\h -I=. -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 LINKER = $(TOOLDIR)\bin\mplink
 LINKERFLAGS = /w /x /u_CRUNTIME /l$(TOOLDIR)\lib 18f14k50_g.lkr 
 MAKEHEX = $(TOOLDIR)\bin\mp2hex
@@ -25,11 +25,11 @@ $(TARGET).hex : $(OBJECT)
 	$(LINKER) $(LINKERFLAGS) $(OBJECT) /m$(TARGET).map /o$(TARGET).cof
 	$(MAKEHEX) /r 0x000800-0xFFFFFF $(TARGET).cof 
 
-..\xsusb_boot\xsusb_boot.hex :
-	$(MAKE) -C ../xsusb_boot
+..\XuLA_boot\XuLA_boot.hex :
+	$(MAKE) -C ../XuLA_boot
 
-total : $(TARGET).hex ..\xsusb_boot\xsusb_boot.hex
-	head --lines=-1 ../xsusb_boot/xsusb_boot.hex > total.hex
+total : $(TARGET).hex ..\XuLA_boot\XuLA_boot.hex
+	head --lines=-1 ../XuLA_boot/XuLA_boot.hex > total.hex
 	cat $(TARGET).hex >> total.hex
 
 %.o : %.c

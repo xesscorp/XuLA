@@ -124,9 +124,9 @@ file_018=system\usb\usb9\usb9.h
 file_019=system\usb\usbctrltrf\usbctrltrf.h
 file_020=system\usb\usbdefs\usbdefs_std_dsc.h
 file_021=system\usb\usbdrv\usbdrv.h
-file_022=C:\MCC18\h\p18f4455.h
-file_023=user\usbcmd.h
-file_024=18f14k50_g.lkr
+file_022=user\usbcmd.h
+file_023=C:\MCC18\h\p18f14k50.h
+file_024=C:\MCC18\bin\LKR\18f14k50_g.lkr
 [SUITE_INFO]
 suite_guid={5B7D72DD-9861-47BD-9F60-2BE967BF8416}
 suite_state=

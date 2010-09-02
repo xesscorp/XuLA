@@ -1,40 +1,41 @@
 //*********************************************************************
-// Module Name: user.c
+// Copyright (C) 2010 Dave Vanden Bout / XESS Corp. / www.xess.com
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or (at
+// your option) any later version.
 //
-// Copyright 2007 X Engineering Software Systems Corp.
-// All rights reserved.
+// This program is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
+//
+//====================================================================
 //
 // Module Description:
-// This module manages the interface between the USB port and the JTAG
-// ports of the FPGA and CPLD on the XS board.
+//  This module manages the interface between the USB port and the JTAG
+//  ports of the FPGA and CPLD on the XS board.
 //
-// Revision: $Id$
 //********************************************************************
-
-
-/** I N C L U D E S **********************************************************/
 
 #include <p18cxxx.h>
 #include <usart.h>
 #include <string.h>
 #include <delays.h>
 #include "system\typedefs.h"
-
 #include "system\usb\usb.h"
-
-#include "io_cfg.h"             // I/O pin mapping
-
+#include "io_cfg.h"
 #include "usbcmd.h"
-
-/** D E F I N I T I O N S ********************************************************/
 
 #define	YES		1
 #define	NO		0
 #define	TRUE	1
 #define	FALSE	0
-
-#define NUM_JTAG_PORTS		1	// The XSUSB interface controls two JTAG ports. 
-#define	PRIMARY_JTAG_PORT	0	// Primary JTAG port.  Usually connected to the FPGA.
 
 #define	MIPS					12	// Number of processor instructions per second.
 
@@ -46,43 +47,8 @@
 
 #define USE_MSSP				YES		// YES if driving JTAG with MSSP block; NO to use bit-banging.
 
-// Pin definitions for connections to JTAG port of device.
-// TCK of the JTAG device is driven by the SSP SCK clock.
-#define	TCK_TRIS		TRISBbits.TRISB6
-#define	TCK_ASM			PORTB,6,ACCESS
-#define	TCK				PORTBbits.RB6
-#define	TCK_MASK		(0x01<<6)
-// TMS of the JTAG device is driven by a general-purpose output.
-#define	TMS_TRIS		TRISBbits.TRISB5
-#define	TMS_ASM			PORTB,5,ACCESS
-#define	TMS				PORTBbits.RB5
-#define	TMS_MASK		(0x01<<5)
-// TDI of the JTAG device is driven by the MSB of the SSP shift-register.
-#define	TDI_TRIS		TRISBbits.TRISB4
-#define	TDI_ASM			PORTB,4,ACCESS
-#define	TDI				PORTBbits.RB4
-#define	TDI_MASK		(0x01<<4)
-// TDO from the JTAG device enters into the LSB of the SSP shift-register.
-#define	TDO_TRIS		TRISCbits.TRISC7
-#define	TDO_ASM			PORTC,7,ACCESS
-#define	TDO				PORTCbits.RC7
-#define	TDO_MASK		(0x01<<7)
-// Output pin that controls the PROG# pin of the FPGA.
-#define	PROG_TRIS		TRISCbits.TRISC4
-#define	PROG			PORTCbits.RC4
 
-// ALU carry bit.
-#define	CARRY_POS		0
-#define	CARRY_BIT_ASM	STATUS,CARRY_POS,ACCESS
-// MSSP buffer-full bit.
-#define	MSSP_BF_POS		0
-#define	MSSP_BF_ASM		WREG,MSSP_BF_POS,ACCESS
-
-// Converse of using ACCESS flag for destination register.
-#define	TO_WREG			0
-
-/** S T R U C T U R E S ******************************************************/
-
+// USB data packet definitions
 typedef union DATA_PACKET
 {
     byte _byte[USBGEN_EP_SIZE];  	//For byte access
@@ -97,12 +63,6 @@ typedef union DATA_PACKET
 	    USBCMD cmd;
 		char info_str[USBGEN_EP_SIZE-1];
 	};
-	struct // TAP_SEQ_CMD structure
-	{
-	    USBCMD cmd;
-		long num_bits;
-		byte flags;
-	};
 	struct
 	{
 	    USBCMD cmd;
@@ -113,14 +73,19 @@ typedef union DATA_PACKET
 	    USBCMD cmd;
 		unsigned prog:1;
 	};
+	struct // TAP_SEQ_CMD structure
+	{
+	    USBCMD cmd;
+		long num_bits;
+		byte flags;
+	};
 } DATA_PACKET;
 
 
 // Definitions for TAP_SEQ_CMD
-
 #define TAP_SEQ_CMD_HDR_LEN			    6
 
-// Flag bits
+// Flag bits for TAP_SEQ_CMD
 #define GET_TDO_MASK					0x01    // Set if gathering TDO bits.
 #define PUT_TMS_MASK					0x02    // Set if TMS bits are included in the packets.
 #define TMS_VAL_MASK					0x04    // Static value for TMS if PUT_TMS_MASK is cleared.
@@ -128,8 +93,6 @@ typedef union DATA_PACKET
 #define TDI_VAL_MASK					0x10    // Static value for TDI if PUT_TDI_MASK is cleared.
 #define	DO_MULTIPLE_PACKETS_MASK		0x80    // Set if command extends over multiple USB packets.
 
-
-/** V A R I A B L E S ********************************************************/
 
 // This table is used to reverse the bits within a byte.  The table has to be located at
 // the beginning of a page because we index into the table by placing the byte value
@@ -177,19 +140,17 @@ typedef struct USER_FLAGS
 } USER_FLAGS;
 static USER_FLAGS flag;
 
-/** P R I V A T E  P R O T O T Y P E S ***************************************/
 
-void BlinkLED(void);
-void ServiceRequests(void);
+// Local function prototypes.
+static void ServiceRequests(void);
 static void InsertDelay(unsigned int t, TimeUnit u);
+void BlinkLED(void);
 
-/** D E C L A R A T I O N S **************************************************/
 
 #pragma code
+
 void UserInit(void)
 {
-    // Setup the LED and its blink timer.
-    mInitAllLEDs();
     blink_counter   = 0;	// No blinks of the LED, yet.
     T2CON           = 0x7F;	// Enable TIMER2 and set pre-,post-scalers to 16 so it increments once every 65536/12MHz = 5.5 ms.
     PR2             = 255;	// TIMER2 issues interrupt every time it reaches 255.
@@ -200,13 +161,9 @@ void UserInit(void)
     INTCONbits.GIEL = 1;	// Enable low-priority interrupts.
     INTCONbits.GIEH = 1;	// Enable high-priority interrupts.
 
-	PROG_TRIS = 0;			// Enable output pin that controls the FPGA PROG# pin.
-	PROG = 1;				// Don't erase the FPGA unless specifically requested. 
+	PROGB = 0;				// Keep the FPGA in erased state at first.
 
-	TCK_TRIS = 0;			// Enable output to TCK pin of primary JTAG device.
-	TMS_TRIS = 0;			// Enable output to TMS pin of primary JTAG device.
-	TDI_TRIS = 0;			// Enable output to TDI pin of primary JTAG device.
-	TDO_TRIS = 1;			// Enable input from TDO pin of primary JTAG device.
+    FPGACLK_ON();           // Turn on the 12 MHz clock that goes to the FPGA GCLK pin.
 
 	// Setup the Master Synchronous Serial Port in SPI mode.
 	PIE1bits.SSPIE      = 0;	// Disable SSP interrupts.
@@ -220,35 +177,19 @@ void UserInit(void)
 	SSPCON1bits.SSPM3	= 0;
 
 	flag.disable_pri_return = 0;
+}
 
-}//end UserInit
 
-
-/******************************************************************************
- * Function:        void ProcessIO(void)
- *
- * PreCondition:    None
- *
- * Input:           None
- *
- * Output:          None
- *
- * Side Effects:    None
- *
- * Overview:        This function is a place holder for other user routines.
- *                  It is a mixture of both USB and non-USB tasks.
- *
- * Note:            None
- *****************************************************************************/
 void ProcessIO(void)
 {   
     // User Application USB tasks
     if((usb_device_state < CONFIGURED_STATE)||(UCONbits.SUSPND==1U))
         return;
     ServiceRequests();
-}//end ProcessIO
+}
 
-void ServiceRequests(void)
+
+static void ServiceRequests(void)
 {
 	byte num_return_bytes;			// Number of bytes to return in response to received command.
 	byte* tdi_data[2];				// Pointers to USB ping-pong endpoint buffers containing TDI bits.
@@ -701,7 +642,7 @@ void ServiceRequests(void)
                 break;
 				
 			case PROG_CMD:
-				PROG = dataPacket.prog;
+				PROGB = dataPacket.prog;
 				num_return_bytes = 0;			// Don't return any acknowledgement.
 				break;
 
@@ -725,20 +666,6 @@ void ServiceRequests(void)
 
 }//end ServiceRequests
 
-/******************************************************************************
- * Function:        void InsertDelay(unsigned int t, TimeUnit u)
- *
- * PreCondition:    None
- *
- * Input:           t - number of time units
- *                  u - time unit
- *
- * Output:          None
- *
- * Side Effects:    None
- *
- * Overview:        Inserts a delay t of time units u.
- *****************************************************************************/
 
 static void InsertDelay(unsigned int t, TimeUnit u)
 {
@@ -766,24 +693,7 @@ static void InsertDelay(unsigned int t, TimeUnit u)
 	}
 }
 
-/******************************************************************************
- * Function:        void BlinkLED(void)
- *
- * PreCondition:    None
- *
- * Input:           None
- *
- * Output:          None
- *
- * Side Effects:    None
- *
- * Overview:        BlinkLED turns on and off an LED if the number of blinks is greater
- *					than zero and the USB is CONFIGURED.
- *
- * Note:            LED macros are in io_cfg.h
- *                  usb_device_state is declared in usbmmap.c and is modified
- *                  in usbdrv.c, usbctrltrf.c, and usb9.c
- *****************************************************************************/
+
 #pragma interruptlow BlinkLED
 void BlinkLED(void)
 {
@@ -798,7 +708,7 @@ void BlinkLED(void)
     
     if(usb_device_state < ADDRESS_STATE)
     {	// Turn off the LED if the USB device has not linked with the PC yet.
-	    mLED_Off();
+	    LED_OFF();
 	}
 	else
 	{	// The USB device has linked with the PC, so activate the LED.
@@ -806,12 +716,12 @@ void BlinkLED(void)
 		{	// Only update the LED state when the scaler reaches zero.
 			if(blink_counter>0U)
 			{	// Toggle the LED as long as the blink counter is non-zero.
-				mLED_Toggle();
+				LED_TOGGLE();
 				blink_counter--;
 			}
 			else
 			{	// Make sure the LED is left on after the blinking is done.
-				mLED_On();
+				LED_ON();
 			}
 		}
 	}

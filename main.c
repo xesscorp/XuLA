@@ -1,17 +1,28 @@
 //*********************************************************************
-// Module Name: main.c
+// Copyright (C) 2010 Dave Vanden Bout / XESS Corp. / www.xess.com
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or (at
+// your option) any later version.
 //
-// Copyright 2007 X Engineering Software Systems Corp.
-// All rights reserved.
+// This program is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
+//
+//====================================================================
 //
 // Module Description:
-// This module boots up the USB-to-JTAG firmware.  Look in user.c
-// for the code that does the majority of the work.
+//  This module boots up the USB-to-JTAG firmware.  Look in user.c
+//  for the code that does the majority of the work.
 //
-// Revision: $Id$
 //********************************************************************
 
-/** I N C L U D E S **********************************************************/
 #include <p18cxxx.h>
 #include "system\typedefs.h"                        // Required
 #include "system\usb\usb.h"                         // Required
@@ -20,12 +31,9 @@
 #include "system\usb\usb_compile_time_validation.h" // Optional
 #include "user\user.h"                              // Modifiable
 
-/** V A R I A B L E S ********************************************************/
-#pragma udata
-
-/** P R I V A T E  P R O T O T Y P E S ***************************************/
 static void InitializeSystem(void);
 void USBTasks(void);
+
 
 /** V E C T O R  R E M A P P I N G *******************************************/
 
@@ -35,7 +43,6 @@ void _reset (void)
 {
     _asm goto _startup _endasm
 }
-#pragma code
 
 #pragma code _HIGH_INTERRUPT_VECTOR = 0x000808
 void _high_ISR (void)
@@ -53,25 +60,10 @@ void _low_ISR (void)
 		_endasm
 	}
 }
+
+
 #pragma code
 
-/** D E C L A R A T I O N S **************************************************/
-#pragma code
-/******************************************************************************
- * Function:        void main(void)
- *
- * PreCondition:    None
- *
- * Input:           None
- *
- * Output:          None
- *
- * Side Effects:    None
- *
- * Overview:        Main program entry point.
- *
- * Note:            None
- *****************************************************************************/
 void main(void)
 {
     InitializeSystem();
@@ -79,32 +71,13 @@ void main(void)
     {
         USBTasks();         // USB Tasks
         ProcessIO();        // See user\user.c & .h
-    }//end while
-}//end main
+    }
+}
 
-/******************************************************************************
- * Function:        static void InitializeSystem(void)
- *
- * PreCondition:    None
- *
- * Input:           None
- *
- * Output:          None
- *
- * Side Effects:    None
- *
- * Overview:        InitializeSystem is a centralize initialization routine.
- *                  All required USB initialization routines are called from
- *                  here.
- *
- *                  User application initialization routine should also be
- *                  called from here.                  
- *
- * Note:            None
- *****************************************************************************/
+
 static void InitializeSystem(void)
 {
-    ADCON1 |= 0x0F;                 // Default all pins to digital
+    DEFAULT_IO_CFG();
     
     #if defined(USE_USB_BUS_SENSE_IO)
     tris_usb_bus_sense = INPUT_PIN; // See io_cfg.h
@@ -115,35 +88,14 @@ static void InitializeSystem(void)
     #endif
     
     mInitializeUSBDriver();         // See usbdrv.h
-    
     UserInit();                     // See user.c & .h
+}
 
-}//end InitializeSystem
 
-/******************************************************************************
- * Function:        void USBTasks(void)
- *
- * PreCondition:    InitializeSystem has been called.
- *
- * Input:           None
- *
- * Output:          None
- *
- * Side Effects:    None
- *
- * Overview:        Service loop for USB tasks.
- *
- * Note:            None
- *****************************************************************************/
 void USBTasks(void)
 {
-    /*
-     * Servicing Hardware
-     */
     USBCheckBusStatus();                    // Must use polling method
     if(UCFGbits.UTEYE!=1U)
         USBDriverService();                 // Interrupt or polling method
 
-}// end USBTasks
-
-/** EOF main.c ***************************************************************/
+}
