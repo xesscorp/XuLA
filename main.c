@@ -31,13 +31,6 @@
 
 #include "system\usb\usb_compile_time_validation.h" // Optional
 
-/** V A R I A B L E S ********************************************************/
-#pragma udata
-
-/** P R I V A T E  P R O T O T Y P E S ***************************************/
-
-/** V E C T O R  R E M A P P I N G *******************************************/
-
 #pragma code _HIGH_INTERRUPT_VECTOR = 0x000008
 void _high_ISR (void)
 {
@@ -52,46 +45,28 @@ void _low_ISR (void)
 
 #pragma code
 
-/** D E C L A R A T I O N S **************************************************/
-#pragma code
-/******************************************************************************
- * Function:        void main(void)
- *
- * PreCondition:    None
- *
- * Input:           None
- *
- * Output:          None
- *
- * Side Effects:    None
- *
- * Overview:        Main program entry point.
- *
- * Note:            None
- *****************************************************************************/
 void main(void)
 {
-    TRISC = 0b11010111; // Outputs: LED and FPGA PROG#
-    mProg_b = 0; // Keep FPGA in reset state by holding PROG# low
+    // Initialize firmware update input pin so pullup has time to work
+    INIT_FMWB();
+
+    TRISC = 0xFF & ~LED_MASK & ~PROGB_MASK; // Outputs: LED and FPGA PROG#
+    PROGB = 0; // Keep FPGA in reset state by holding PROG# low
 
     //Check to see if firmware is being updated.
-    mInitFMWUpdate_b();
-    if(mFMWUpdate_b == 1)
-    { // If no shunt on FMW jumper, then go into user mode
+    if(FMWB == 1)
+    { // If no shunt to ground on FMW jumper, then go into user mode
         _asm goto RM_RESET_VECTOR _endasm
-    }//end if
+    }
     
     // Shunt on FMW jumper, so enter boot mode
-//	mInitAllLEDs();
     mInitializeUSBDriver();     // See usbdrv.h
     USBCheckBusStatus();        // Modified to always enable USB module
     while(1)
     {
         USBDriverService();     // See usbdrv.c
         BootService();          // See boot.c
-    }//end while
-}//end main
+    }
+}
 
 #pragma code user = RM_RESET_VECTOR
-
-/** EOF main.c ***************************************************************/

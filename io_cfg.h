@@ -26,43 +26,142 @@
 #ifndef IO_CFG_H
 #define IO_CFG_H
 
-/** I N C L U D E S *************************************************/
 #include "autofiles\usbcfg.h"
 
-/** T R I S *********************************************************/
 #define INPUT_PIN           1
 #define OUTPUT_PIN          0
 
-/** U S B ***********************************************************/
-#define tris_usb_bus_sense  TRISAbits.TRISA1    // Input
+/** Pin definition macros *******************************************/
+#define TRIS(P,B)           (TRIS ## P ## bits.TRIS ## P ## B)
+#define PORT(P,B)           (PORT ## P ## bits.R ## P ## B)
+#define PORT_ASM(P,B)       PORT ## P ## ,B,ACCESS
+#define LATCH(P,B)          (LAT ## P ## bits.LAT ## P ## B)
 
+/** Sense presence of USB bus (not used) *****************************/
 #if defined(USE_USB_BUS_SENSE_IO)
-#define usb_bus_sense       PORTAbits.RA1
+#define tris_usb_bus_sense  TRIS(A,1)
+#define usb_bus_sense       PORT(A,1)
 #else
 #define usb_bus_sense       1
 #endif
 
-#define tris_self_power     TRISAbits.TRISA2    // Input
-
+/** Sense presence of external power (not used) *********************/
 #if defined(USE_SELF_POWER_SENSE_IO)
-#define self_power          PORTAbits.RA2
+#define tris_self_power     TRIS(A,2)
+#define self_power          PORT(A,2)
 #else
 #define self_power          1
 #endif
 
+/** TDO *************************************************************/
+#define TDO_PORT            B
+#define TDO_BIT             4
+#define TDO_MASK            (1<<TDO_BIT)
+#define TDO_TRIS            TRIS(B,4)
+#define TDO                 LATCH(B,4)
+#define TDO_ASM             PORT_ASM(B,4)
+#define INIT_TDO()          TDO_TRIS = INPUT_PIN
+
+/** TMS *************************************************************/
+#define TMS_PORT            B
+#define TMS_BIT             5
+#define TMS_MASK            (1<<TMS_BIT)
+#define TMS_TRIS            TRIS(B,5)
+#define TMS                 LATCH(B,5)
+#define TMS_ASM             PORT_ASM(B,5)
+#define INIT_TMS()          TMS = 0, TMS_TRIS = OUTPUT_PIN
+
+/** TCK *************************************************************/
+#define TCK_PORT            B
+#define TCK_BIT             6
+#define TCK_MASK            (1<<TCK_BIT)
+#define TCK_TRIS            TRIS(B,6)
+#define TCK                 LATCH(B,6)
+#define TCK_ASM             PORT_ASM(B,6)
+#define INIT_TCK()          TCK = 0, TCK_TRIS = OUTPUT_PIN
+
 /** Firmware update jumper sense ************************************/
-#define mInitFMWUpdate_b()  LATBbits.LATB7 = 1; TRISBbits.TRISB7 = INPUT_PIN; INTCON2bits.NOT_RABPU = 0;
-#define mFMWUpdate_b        PORTBbits.RB7
+#define FMWB_PORT           B
+#define FMWB_BIT            7
+#define FMWB_MASK           (1<<FMWB_BIT)
+#define FMWB_TRIS           TRIS(B,7)
+#define FMWB                PORT(B,7)
+#define FMWB_ASM            PORT_ASM(B,7)
+#define INIT_FMWB()         LATCH(B,7) = 1, FMWB_TRIS = INPUT_PIN, INTCON2bits.NOT_RABPU = 0
+
+/** FPGA DONE pin***************************************************/
+#define DONE_PORT           C
+#define DONE_BIT            0
+#define DONE_MASK           (1<<DONE_BIT)
+#define DONE_TRIS           TRIS(C,0)
+#define DONE                PORT(C,0)
+#define DONE_ASM            PORT_ASM(C,0)
+#define INIT_DONE()         DONE_TRIS = INPUT_PIN
+
+/** 1.2V sense pin***************************************************/
+#define SENSE_1V_PORT       C
+#define SENSE_1V_BIT        2
+#define SENSE_1V_MASK       (1<<SENSE_1V_BIT)
+#define SENSE_1V_TRIS       TRIS(C,2)
+#define SENSE_1V            PORT(C,2)
+#define SENSE_1V_ASM        PORT_ASM(C,2)
+#define INIT_SENSE_1V()     SENSE_1V_TRIS = INPUT_PIN
 
 /** FPGA PROG# pin control ******************************************/
-#define mInitProg_b()       LATCbits.LATC3 = 0; TRISCbits.TRISC3 = OUTPUT_PIN;
-#define mProg_b             LATCbits.LATC3
+#define PROGB_PORT          C
+#define PROGB_BIT           3
+#define PROGB_MASK          (1<<PROGB_BIT)
+#define PROGB_TRIS          TRIS(C,3)
+#define PROGB               LATCH(C,3)
+#define PROGB_ASM           PORT_ASM(C,3)
+#define INIT_PROGB()        PROGB = 0, PROGB_TRIS = OUTPUT_PIN
 
-/** L E D ***********************************************************/
-#define mInitAllLEDs()      LATCbits.LATC5 = 0; TRISCbits.TRISC5 = OUTPUT_PIN;
-#define mLED                LATCbits.LATC5
-#define mLED_On()           mLED = 1;
-#define mLED_Off()          mLED = 0;
-#define mLED_Toggle()       mLED = !mLED;
+/** FPGA clock pin control ******************************************/
+#define FPGACLK_PORT        C
+#define FPGACLK_BIT         4
+#define FPGACLK_MASK        (1<<FPGACLK_BIT)
+#define FPGACLK_TRIS        TRIS(C,4)
+#define FPGACLK             LATCH(C,4)
+#define FPGACLK_ASM         PORT_ASM(C,4)
+#define FPGACLK_ON()        PSTRCONbits.STRB = 1    // route PWM to FPGA clock pin
+#define FPGACLK_OFF()       PSTRCONbits.STRB = 0    // disconnect PWM from clock pin
+#define INIT_FPGACLK()      FPGACLK_OFF(), FPGACLK = 0, FPGACLK_TRIS = OUTPUT_PIN, \
+                            T2CON = 0b00000100, PR2 = 0, CCPR1L = 0, CCP1CON = 0b00101110
+
+/** LED *************************************************************/
+#define LED_PORT            C
+#define LED_BIT             5
+#define LED_MASK            (1<<LED_BIT)
+#define LED_TRIS            TRIS(C,5)
+#define LED                 LATCH(C,5)
+#define LED_ASM             PORT_ASM(C,5)
+#define LED_OFF()           LED = 0
+#define LED_ON()            LED = 1
+#define LED_TOGGLE()        LED = !LED
+#define INIT_LED()          LED_OFF(), LED_TRIS = OUTPUT_PIN
+
+/** 3.3V sense pin***************************************************/
+#define SENSE_3V_PORT       C
+#define SENSE_3V_BIT        6
+#define SENSE_3V_MASK       (1<<SENSE_3V_BIT)
+#define SENSE_3V_TRIS       TRIS(C,6)
+#define SENSE_3V            PORT(C,6)
+#define SENSE_3V_ASM        PORT_ASM(C,6)
+#define INIT_SENSE_3V()     SENSE_3V_TRIS = INPUT_PIN
+
+/** TDI *************************************************************/
+#define TDI_PORT            C
+#define TDI_BIT             7
+#define TDI_MASK            (1<<TDI_BIT)
+#define TDI_TRIS            TRIS(C,7)
+#define TDI                 LATCH(C,7)
+#define TDI_ASM             PORT_ASM(C,7)
+#define INIT_TDI()          TDI = 0, TDI_TRIS = OUTPUT_PIN
+
+/** Default configuration of I/O pins ******************************/
+#define DEFAULT_IO_CFG()    ANSEL=0, ANSELH=0, INIT_SENSE_1V(), INIT_SENSE_3V(),\
+                            INIT_TDO(), INIT_TMS(), INIT_TCK(), INIT_FMWB(),\
+                            INIT_DONE(), INIT_PROGB(), INIT_FPGACLK(),\
+                            INIT_LED(), INIT_TDI()
 
 #endif //IO_CFG_H

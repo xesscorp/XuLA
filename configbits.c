@@ -38,7 +38,7 @@
 #pragma config  HFOFST  = OFF       // HFINTOSC is not used, so who cares about fast start-up
 #pragma config  STVREN  = ON        // Stack overflow causes a reset
 #pragma config  LVP     = OFF       // No low-voltage programming
-#pragma config  BBSIZ   = ON        // Set boot block size to 4 KB (2 KW)
+#pragma config  BBSIZ   = OFF       // Set boot block size to 2 KB (1 KW)
 #pragma config  XINST   = OFF       // Disable extended instructions
 
 // Boot block (0x0000 - 0x07FF)

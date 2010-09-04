@@ -346,11 +346,11 @@ void BlinkUSBStatus(void)
 {
     if(usb_device_state < ADDRESS_STATE)
 	{
-		mLED_Off();
+		LED_OFF();
 	}
 	else
 	{
-		mLED_On();
+		LED_ON();
 	}
 }//end BlinkUSBStatus
 /** EOF boot.c ***************************************************************/
