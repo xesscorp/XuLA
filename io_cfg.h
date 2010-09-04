@@ -98,15 +98,6 @@
 #define DONE_ASM            PORT_ASM(C,0)
 #define INIT_DONE()         DONE_TRIS = INPUT_PIN
 
-/** SRQ input pin***************************************************/
-#define SRQ_IN_PORT         C
-#define SRQ_IN_BIT          1
-#define SRQ_IN_MASK         (1<<SRQ_IN_BIT)
-#define SRQ_IN_TRIS         TRIS(C,1)
-#define SRQ_IN              PORT(C,1)
-#define SRQ_IN_ASM          PORT_ASM(C,1)
-#define INIT_SRQ_IN()       SRQ_IN_TRIS = INPUT_PIN
-
 /** 1.2V sense pin***************************************************/
 #define SENSE_1V_PORT       C
 #define SENSE_1V_BIT        2
@@ -132,9 +123,10 @@
 #define FPGACLK_TRIS        TRIS(C,4)
 #define FPGACLK             LATCH(C,4)
 #define FPGACLK_ASM         PORT_ASM(C,4)
-#define INIT_FPGACLK()      FPGACLK = 0, FPGACLK_TRIS = OUTPUT_PIN
-#define FPGACLK_ON()        SRCON0 = 0b10001000, SRCON1 = 0b10000100
-#define FPGACLK_OFF()       SRCON0 = 0b10001000, SRCON1 = 0b10001000
+#define FPGACLK_ON()        PSTRCONbits.STRB = 1    // route PWM to FPGA clock pin
+#define FPGACLK_OFF()       PSTRCONbits.STRB = 0    // disconnect PWM from clock pin
+#define INIT_FPGACLK()      FPGACLK_OFF(), FPGACLK = 0, FPGACLK_TRIS = OUTPUT_PIN, \
+                            T2CON = 0b00000100, PR2 = 0, CCPR1L = 0, CCP1CON = 0b00101110
 
 /** LED *************************************************************/
 #define LED_PORT            C
@@ -169,7 +161,7 @@
 /** Default configuration of I/O pins ******************************/
 #define DEFAULT_IO_CFG()    ANSEL=0, ANSELH=0, INIT_SENSE_1V(), INIT_SENSE_3V(),\
                             INIT_TDO(), INIT_TMS(), INIT_TCK(), INIT_FMWB(),\
-                            INIT_DONE(), INIT_SRQ_IN(), INIT_PROGB(), INIT_FPGACLK(),\
+                            INIT_DONE(), INIT_PROGB(), INIT_FPGACLK(),\
                             INIT_LED(), INIT_TDI()
 
 #endif //IO_CFG_H

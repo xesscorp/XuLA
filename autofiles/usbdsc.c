@@ -220,7 +220,7 @@ CFG01=
     DSC_INTF,               // INTERFACE descriptor type
     0,                      // Interface Number
     0,                      // Alternate Setting Number
-    4,                      // Number of endpoints in this intf
+    2,                      // Number of endpoints in this intf
     0x00,                   // Class code
     0x00,                   // Subclass code
     0x00,                   // Protocol code
@@ -228,9 +228,7 @@ CFG01=
     
     /* Endpoint Descriptors */
     sizeof(USB_EP_DSC),DSC_EP,_EP01_OUT,_BULK,USBGEN_EP_SIZE,32,
-    sizeof(USB_EP_DSC),DSC_EP,_EP01_IN,_BULK,USBGEN_EP_SIZE,32,
-    sizeof(USB_EP_DSC),DSC_EP,_EP02_OUT,_BULK,USBGEN_EP_SIZE,32,
-    sizeof(USB_EP_DSC),DSC_EP,_EP02_IN,_BULK,USBGEN_EP_SIZE,32
+    sizeof(USB_EP_DSC),DSC_EP,_EP01_IN,_BULK,USBGEN_EP_SIZE,32
 };
 
 rom struct{byte bLength;byte bDscType;word string[1];}sd000={

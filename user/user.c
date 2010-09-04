@@ -151,15 +151,16 @@ void BlinkLED(void);
 
 void UserInit(void)
 {
-    blink_counter   = 0;	// No blinks of the LED, yet.
-    T2CON           = 0x7F;	// Enable TIMER2 and set pre-,post-scalers to 16 so it increments once every 65536/12MHz = 5.5 ms.
-    PR2             = 255;	// TIMER2 issues interrupt every time it reaches 255.
-    RCONbits.IPEN   = 1;	// Enable prioritized interrupts.
-    PIR1            = 0;	// Clear all perpheral interrupt flags.
-    PIE1bits.TMR2IE = 1;	// Enable TIMER2 interrupt.
-    IPR1bits.TMR2IP = 0;	// Make TIMER2 issue a low-priority interrupt.
-    INTCONbits.GIEL = 1;	// Enable low-priority interrupts.
-    INTCONbits.GIEH = 1;	// Enable high-priority interrupts.
+
+//    blink_counter   = 0;	// No blinks of the LED, yet.
+//    T2CON           = 0x7F;	// Enable TIMER2 and set pre-,post-scalers to 16 so it increments once every 65536/12MHz = 5.5 ms.
+//    PR2             = 255;	// TIMER2 issues interrupt every time it reaches 255.
+//    RCONbits.IPEN   = 1;	// Enable prioritized interrupts.
+//    PIR1            = 0;	// Clear all perpheral interrupt flags.
+//    PIE1bits.TMR2IE = 1;	// Enable TIMER2 interrupt.
+//    IPR1bits.TMR2IP = 0;	// Make TIMER2 issue a low-priority interrupt.
+//    INTCONbits.GIEL = 1;	// Enable low-priority interrupts.
+//    INTCONbits.GIEH = 1;	// Enable high-priority interrupts.
 
 	PROGB = 0;				// Keep the FPGA in erased state at first.
 

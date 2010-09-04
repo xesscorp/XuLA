@@ -97,5 +97,4 @@ void USBTasks(void)
     USBCheckBusStatus();                    // Must use polling method
     if(UCFGbits.UTEYE!=1U)
         USBDriverService();                 // Interrupt or polling method
-
 }
