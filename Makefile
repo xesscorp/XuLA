@@ -1,103 +1,34 @@
-# Manually-generated makefile.
+# MPLAB IDE generated this makefile for use with GNU make.
+# Project: XuLA_jtag.mcp
+# Date: Thu Sep 09 23:41:55 2010
 
-TARGET = XuLA_jtag
+AS = MPASMWIN.exe
+CC = mcc18.exe
+LD = mplink.exe
+AR = mplib.exe
+RM = rm
 
-TOOLDIR = \mcc18
-CC = $(TOOLDIR)\bin\mcc18
-CCFLAGS = -fe=$(TARGET).err -w1 -p=18f14k50 -I=$(TOOLDIR)\h -I=. -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
-LINKER = $(TOOLDIR)\bin\mplink
-LINKERFLAGS = /w /x /u_CRUNTIME /l$(TOOLDIR)\lib 18f14k50_g.lkr 
-MAKEHEX = $(TOOLDIR)\bin\mp2hex
-MAKEDEP = makedepend
-MAKEDEPFLAGS = -I$(TOOLDIR)/h -I. -o.o
+_output/XuLA_jtag.cof : _output/main.o _output/configbits.o _output/user.o _output/usb_device.o _output/usb_function_generic.o _output/usb_descriptors.o
+	$(LD) /l"C:\MCC18\lib" /k"C:\MCC18\bin\LKR" "18f14k50_g.lkr" "_output\main.o" "_output\configbits.o" "_output\user.o" "_output\usb_device.o" "_output\usb_function_generic.o" "_output\usb_descriptors.o" /u_CRUNTIME /z__MPLAB_BUILD=1 /m"_output\XuLA_jtag.map" /o"_output\XuLA_jtag.cof"
 
-OBJECT =	main.o \
-			system/usb/usbmmap.o \
-			system/usb/usbdrv/usbdrv.o \
-			system/usb/usb9/usb9.o \
-			autofiles/usbdsc.o \
-			system/usb/usbctrltrf/usbctrltrf.o \
-			user/user.o \
-			system/usb/class/generic/usbgen.o \
-			configbits.o
-			
-$(TARGET).hex : $(OBJECT)
-	$(LINKER) $(LINKERFLAGS) $(OBJECT) /m$(TARGET).map /o$(TARGET).cof
-	$(MAKEHEX) /r 0x000800-0xFFFFFF $(TARGET).cof 
+_output/main.o : main.c ../../../../MCC18/h/stdio.h ../../../../MCC18/h/stdlib.h ../../../../MCC18/h/string.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_common.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_device.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_hal.h main.c ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/USB/usb.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/GenericTypeDefs.h ../../../../MCC18/h/stddef.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/Compiler.h ../../../../MCC18/h/p18cxxx.h ../../../../MCC18/h/p18f14k50.h ../../../../MCC18/h/stdarg.h usb_config.h ../../../../MCC18/h/limits.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_ch9.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/USB/usb_hal_pic18.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/USB/usb_function_generic.h HardwareProfile.h user.h
+	$(CC) -p=18F14K50 /i"." -I"C:\Microchip Solutions v2010-08-04\Microchip\Include" -I"C:\MCC18\h" "main.c" -fo="_output\main.o" -w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 
-..\XuLA_boot\XuLA_boot.hex :
-	$(MAKE) -C ../XuLA_boot
+_output/configbits.o : configbits.c
+	$(CC) -p=18F14K50 /i"." -I"C:\Microchip Solutions v2010-08-04\Microchip\Include" -I"C:\MCC18\h" "configbits.c" -fo="_output\configbits.o" -w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 
-total : $(TARGET).hex ..\XuLA_boot\XuLA_boot.hex
-	head --lines=-1 ../XuLA_boot/XuLA_boot.hex > total.hex
-	cat $(TARGET).hex >> total.hex
+_output/user.o : user.c ../../../../MCC18/h/stdio.h ../../../../MCC18/h/stdlib.h ../../../../MCC18/h/string.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_common.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_device.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_hal.h user.c ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/USB/usb.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/GenericTypeDefs.h ../../../../MCC18/h/stddef.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/Compiler.h ../../../../MCC18/h/p18cxxx.h ../../../../MCC18/h/p18f14k50.h ../../../../MCC18/h/stdarg.h usb_config.h ../../../../MCC18/h/limits.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_ch9.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/USB/usb_hal_pic18.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/USB/usb_function_generic.h HardwareProfile.h user.h usbcmd.h
+	$(CC) -p=18F14K50 /i"." -I"C:\Microchip Solutions v2010-08-04\Microchip\Include" -I"C:\MCC18\h" "user.c" -fo="_output\user.o" -w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 
-%.o : %.c
-	$(CC) $(CCFLAGS) $*.c -fo=$@
+_output/usb_device.o : ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/USB/usb_device.c ../../../../MCC18/h/stdio.h ../../../../MCC18/h/stdlib.h ../../../../MCC18/h/string.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_common.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_device.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_hal.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/USB/usb_device.c ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/GenericTypeDefs.h ../../../../MCC18/h/stddef.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/Compiler.h ../../../../MCC18/h/p18cxxx.h ../../../../MCC18/h/p18f14k50.h ../../../../MCC18/h/stdarg.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/USB/USB.h usb_config.h ../../../../MCC18/h/limits.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_ch9.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/USB/usb_hal_pic18.h HardwareProfile.h
+	$(CC) -p=18F14K50 /i"." -I"C:\Microchip Solutions v2010-08-04\Microchip\Include" -I"C:\MCC18\h" "C:\Microchip Solutions v2010-08-04\Microchip\USB\usb_device.c" -fo="_output\usb_device.o" -w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 
-depend :
-	$(MAKEDEP) $(MAKEDEPFLAGS) $(subst .o,.c,$(OBJECT))
+_output/usb_function_generic.o : ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/USB/Generic\ Device\ Driver/usb_function_generic.c ../../../../MCC18/h/stdio.h ../../../../MCC18/h/stdlib.h ../../../../MCC18/h/string.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_common.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_device.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_hal.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/GenericTypeDefs.h ../../../../MCC18/h/stddef.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/Compiler.h ../../../../MCC18/h/p18cxxx.h ../../../../MCC18/h/p18f14k50.h ../../../../MCC18/h/stdarg.h usb_config.h ../../../../MCC18/h/limits.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_ch9.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/USB/usb_hal_pic18.h
+	$(CC) -p=18F14K50 /i"." -I"C:\Microchip Solutions v2010-08-04\Microchip\Include" -I"C:\MCC18\h" "C:\Microchip Solutions v2010-08-04\Microchip\USB\Generic Device Driver\usb_function_generic.c" -fo="_output\usb_function_generic.o" -w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 
-clean :
-	-rm $(OBJECT) *.cof *.cod *.hex *.lst *.map
+_output/usb_descriptors.o : usb_descriptors.c ../../../../MCC18/h/stdio.h ../../../../MCC18/h/stdlib.h ../../../../MCC18/h/string.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_common.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_device.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_hal.h usb_descriptors.c ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/USB/usb.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/GenericTypeDefs.h ../../../../MCC18/h/stddef.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/Compiler.h ../../../../MCC18/h/p18cxxx.h ../../../../MCC18/h/p18f14k50.h ../../../../MCC18/h/stdarg.h usb_config.h ../../../../MCC18/h/limits.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/usb/usb_ch9.h ../../../../Microchip\ Solutions\ v2010-08-04/Microchip/Include/USB/usb_hal_pic18.h
+	$(CC) -p=18F14K50 /i"." -I"C:\Microchip Solutions v2010-08-04\Microchip\Include" -I"C:\MCC18\h" "usb_descriptors.c" -fo="_output\usb_descriptors.o" -w3 -Ou- -Ot- -Ob- -Op- -Or- -Od- -Opa-
 
-# DO NOT DELETE
+clean : 
+	$(RM) "_output\main.o" "_output\configbits.o" "_output\user.o" "_output\usb_device.o" "_output\usb_function_generic.o" "_output\usb_descriptors.o" "_output\XuLA_jtag.cof" "_output\XuLA_jtag.hex" "_output\XuLA_jtag.cod" "_output\XuLA_jtag.lst" "_output\XuLA_jtag.map"
 
-main.o: \mcc18/h/p18cxxx.h system\typedefs.h
-main.o: system\usb\usb_compile_time_validation.h system\usb\usb.h
-main.o: autofiles\usbcfg.h system\usb\usbdefs\usbdefs_std_dsc.h
-main.o: autofiles\usbdsc.h system\usb\usbdefs\usbdefs_ep0_buff.h
-main.o: system\usb\usbmmap.h system\usb\usbdrv\usbdrv.h
-main.o: system\usb\usbctrltrf\usbctrltrf.h system\usb\usb9\usb9.h
-system/usb/usbmmap.o: system\typedefs.h system\usb\usb.h autofiles\usbcfg.h
-system/usb/usbmmap.o: system\usb\usbdefs\usbdefs_std_dsc.h autofiles\usbdsc.h
-system/usb/usbmmap.o: system\usb\usbdefs\usbdefs_ep0_buff.h
-system/usb/usbmmap.o: system\usb\usbmmap.h system\usb\usbdrv\usbdrv.h
-system/usb/usbmmap.o: system\usb\usbctrltrf\usbctrltrf.h
-system/usb/usbmmap.o: system\usb\usb9\usb9.h
-system/usb/usbdrv/usbdrv.o: \mcc18/h/p18cxxx.h system\typedefs.h
-system/usb/usbdrv/usbdrv.o: system\usb\usb.h autofiles\usbcfg.h
-system/usb/usbdrv/usbdrv.o: system\usb\usbdefs\usbdefs_std_dsc.h
-system/usb/usbdrv/usbdrv.o: autofiles\usbdsc.h
-system/usb/usbdrv/usbdrv.o: system\usb\usbdefs\usbdefs_ep0_buff.h
-system/usb/usbdrv/usbdrv.o: system\usb\usbmmap.h system\usb\usbdrv\usbdrv.h
-system/usb/usbdrv/usbdrv.o: system\usb\usbctrltrf\usbctrltrf.h
-system/usb/usbdrv/usbdrv.o: system\usb\usb9\usb9.h io_cfg.h
-system/usb/usb9/usb9.o: \mcc18/h/p18cxxx.h system\typedefs.h system\usb\usb.h
-system/usb/usb9/usb9.o: autofiles\usbcfg.h
-system/usb/usb9/usb9.o: system\usb\usbdefs\usbdefs_std_dsc.h
-system/usb/usb9/usb9.o: autofiles\usbdsc.h
-system/usb/usb9/usb9.o: system\usb\usbdefs\usbdefs_ep0_buff.h
-system/usb/usb9/usb9.o: system\usb\usbmmap.h system\usb\usbdrv\usbdrv.h
-system/usb/usb9/usb9.o: system\usb\usbctrltrf\usbctrltrf.h
-system/usb/usb9/usb9.o: system\usb\usb9\usb9.h io_cfg.h
-autofiles/usbdsc.o: system\typedefs.h system\usb\usb.h autofiles\usbcfg.h
-autofiles/usbdsc.o: system\usb\usbdefs\usbdefs_std_dsc.h autofiles\usbdsc.h
-autofiles/usbdsc.o: system\usb\usbdefs\usbdefs_ep0_buff.h
-autofiles/usbdsc.o: system\usb\usbmmap.h system\usb\usbdrv\usbdrv.h
-autofiles/usbdsc.o: system\usb\usbctrltrf\usbctrltrf.h system\usb\usb9\usb9.h
-system/usb/usbctrltrf/usbctrltrf.o: \mcc18/h/p18cxxx.h system\typedefs.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usb.h autofiles\usbcfg.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usbdefs\usbdefs_std_dsc.h
-system/usb/usbctrltrf/usbctrltrf.o: autofiles\usbdsc.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usbdefs\usbdefs_ep0_buff.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usbmmap.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usbdrv\usbdrv.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usbctrltrf\usbctrltrf.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usb9\usb9.h
-user/user.o: \mcc18/h/p18cxxx.h \mcc18/h/usart.h \mcc18/h/string.h
-user/user.o: \mcc18/h/stddef.h \mcc18/h/delays.h system\typedefs.h
-user/user.o: system\usb\usb.h autofiles\usbcfg.h
-user/user.o: system\usb\usbdefs\usbdefs_std_dsc.h autofiles\usbdsc.h
-user/user.o: system\usb\usbdefs\usbdefs_ep0_buff.h system\usb\usbmmap.h
-user/user.o: system\usb\usbdrv\usbdrv.h system\usb\usbctrltrf\usbctrltrf.h
-user/user.o: system\usb\usb9\usb9.h io_cfg.h
-system/usb/class/generic/usbgen.o: \mcc18/h/p18cxxx.h system\typedefs.h
-system/usb/class/generic/usbgen.o: system\usb\usb.h autofiles\usbcfg.h
-system/usb/class/generic/usbgen.o: system\usb\usbdefs\usbdefs_std_dsc.h
-system/usb/class/generic/usbgen.o: autofiles\usbdsc.h
-system/usb/class/generic/usbgen.o: system\usb\usbdefs\usbdefs_ep0_buff.h
-system/usb/class/generic/usbgen.o: system\usb\usbmmap.h
-system/usb/class/generic/usbgen.o: system\usb\usbdrv\usbdrv.h
-system/usb/class/generic/usbgen.o: system\usb\usbctrltrf\usbctrltrf.h
-system/usb/class/generic/usbgen.o: system\usb\usb9\usb9.h

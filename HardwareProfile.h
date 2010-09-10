@@ -23,10 +23,15 @@
 //
 //********************************************************************
 
-#ifndef IO_CFG_H
-#define IO_CFG_H
+#ifndef HARDWAREPROFILE_H
+#define HARDWAREPROFILE_H
 
-#include "autofiles\usbcfg.h"
+//Uncomment one of the following lines to make the output HEX of this 
+//  project work with the HID or Microchip Bootloader
+//#define PROGRAMMABLE_WITH_USB_HID_BOOTLOADER
+#define PROGRAMMABLE_WITH_USB_MCHPUSB_BOOTLOADER	
+
+#define CLOCK_FREQ          48000000
 
 #define INPUT_PIN           1
 #define OUTPUT_PIN          0
@@ -40,9 +45,9 @@
 /** Sense presence of USB bus (not used) *****************************/
 #if defined(USE_USB_BUS_SENSE_IO)
 #define tris_usb_bus_sense  TRIS(A,1)
-#define usb_bus_sense       PORT(A,1)
+#define USB_BUS_SENSE       PORT(A,1)
 #else
-#define usb_bus_sense       1
+#define USB_BUS_SENSE       1
 #endif
 
 /** Sense presence of external power (not used) *********************/
@@ -58,7 +63,7 @@
 #define TDO_BIT             4
 #define TDO_MASK            (1<<TDO_BIT)
 #define TDO_TRIS            TRIS(B,4)
-#define TDO                 LATCH(B,4)
+#define TDO                 PORT(B,4)
 #define TDO_ASM             PORT_ASM(B,4)
 #define INIT_TDO()          TDO_TRIS = INPUT_PIN
 
@@ -125,7 +130,7 @@
 #define FPGACLK_ASM         PORT_ASM(C,4)
 #define FPGACLK_ON()        PSTRCONbits.STRB = 1    // route PWM to FPGA clock pin
 #define FPGACLK_OFF()       PSTRCONbits.STRB = 0    // disconnect PWM from clock pin
-#define INIT_FPGACLK()      FPGACLK_OFF(), FPGACLK = 0, FPGACLK_TRIS = OUTPUT_PIN, \
+#define INIT_FPGACLK()      PSTRCON = 0, FPGACLK = 0, FPGACLK_TRIS = OUTPUT_PIN, \
                             T2CON = 0b00000100, PR2 = 0, CCPR1L = 0, CCP1CON = 0b00101110
 
 /** LED *************************************************************/
@@ -164,4 +169,4 @@
                             INIT_DONE(), INIT_PROGB(), INIT_FPGACLK(),\
                             INIT_LED(), INIT_TDI()
 
-#endif //IO_CFG_H
+#endif
