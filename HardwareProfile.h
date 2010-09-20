@@ -41,6 +41,7 @@
 #define PORT(P,B)           (PORT ## P ## bits.R ## P ## B)
 #define PORT_ASM(P,B)       PORT ## P ## ,B,ACCESS
 #define LATCH(P,B)          (LAT ## P ## bits.LAT ## P ## B)
+#define LATCH_ASM(P,B)      LAT ## P ## ,B,ACCESS
 
 /** Sense presence of USB bus (not used) *****************************/
 #if defined(USE_USB_BUS_SENSE_IO)
@@ -92,7 +93,7 @@
 #define FMWB_TRIS           TRIS(B,7)
 #define FMWB                PORT(B,7)
 #define FMWB_ASM            PORT_ASM(B,7)
-#define INIT_FMWB()         LATCH(B,7) = 1, FMWB_TRIS = INPUT_PIN, INTCON2bits.NOT_RABPU = 0
+#define INIT_FMWB()         INTCON2bits.NOT_RABPU = 0, LATCH(B,7) = 1, FMWB_TRIS = INPUT_PIN
 
 /** FPGA DONE pin***************************************************/
 #define DONE_PORT           C
