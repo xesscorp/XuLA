@@ -47,11 +47,15 @@ void _low_ISR (void)
 
 void main(void)
 {
+    word b;
+
     // Initialize firmware update input pin so pullup has time to work
     INIT_FMWB();
 
     TRISC = 0xFF & ~LED_MASK & ~PROGB_MASK; // Outputs: LED and FPGA PROG#
     PROGB = 0; // Keep FPGA in reset state by holding PROG# low
+
+    for(b=1; b!=0; b++) ;
 
     //Check to see if firmware is being updated.
     if(FMWB == 1)

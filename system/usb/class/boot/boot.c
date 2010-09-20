@@ -137,11 +137,11 @@ void ReadProgMem(void) //TESTED: Passed
         //2 separate inst prevents compiler from using RAM stack
 //        byteTemp = *((dataPacket.ADR.pAdr)+counter);
 
-        if(dataPacket.ADR.upper==0 && big_counter>0x5FFF)
+//        if(dataPacket.ADR.upper==0 && big_counter>0x5FFF)
             // make non-existent program memory look like it is erased.
-            byteTemp = 0xFF;
-        else
-            byteTemp = *((dataPacket.ADR.pAdr)+counter);
+//            byteTemp = 0xFF;
+//        else
+        byteTemp = *((dataPacket.ADR.pAdr)+counter);
         dataPacket.data[counter] = byteTemp;
     }//end for
     
@@ -298,8 +298,8 @@ void BootService(void)
                 Reset();
                 break;
             
-            case UPDATE_LED:
-            	counter = 0x01;
+//            case UPDATE_LED:
+//            	counter = 0x01;
 //				if(dataPacket.led_num == 3)
 //				{
 //					mLED_3 = dataPacket.led_status;
@@ -310,7 +310,7 @@ void BootService(void)
 //					mLED_4 = dataPacket.led_status;
 //					counter = 0x01;
 //				}//end if
-                break;
+//                break;
                 
             default:
                 break;
