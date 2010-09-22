@@ -18,18 +18,16 @@
 //====================================================================
 //
 // Module Description:
-//  Include file for user.c.
+//  This module manages the LED blinker.
 //
 //********************************************************************
 
-#ifndef USER_H
-#define USER_H
 
-extern WORD runtest_timer;
+#include "HardwareProfile.h"
+#include "GenericTypeDefs.h"
 
-void UserInit( void );
-void ServiceRequests( void );
-void ProcessIO( void );
-void BlinkLED( void );
+extern BYTE blink_counter;
+extern BYTE blink_scaler;
 
-#endif //USER_H
+void InitBlinker( void );
+void Blinker( void );

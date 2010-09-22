@@ -29,6 +29,20 @@
 #include "GenericTypeDefs.h"
 #include "user.h"
 #include "usbcmd.h"
+#include "utils.h"
+#include "blinker.h"
+
+// Information structure for device.
+typedef struct DEVICE_INFO
+{
+    CHAR8 product_id[2];
+    CHAR8 version_id[2];
+    struct
+    {
+        CHAR8 str[USBGEN_EP_SIZE - 2 - 2 - 1 - 1];
+    }     desc;
+    CHAR8 checksum;
+} DEVICE_INFO;
 
 // USB data packet definitions
 typedef union DATA_PACKET
@@ -42,8 +56,16 @@ typedef union DATA_PACKET
     };
     struct
     {
-        USBCMD cmd;
-        CHAR8  info_str[USBGEN_EP_SIZE - 1];
+        USBCMD      cmd;
+        DEVICE_INFO device_info;
+    };
+    struct
+    {
+        USBCMD   cmd;
+        unsigned tms : 1;
+        unsigned tdi : 1;
+        unsigned tdo : 1;
+        unsigned : 5;
     };
     struct
     {
@@ -83,7 +105,13 @@ typedef union DATA_PACKET
 
 
 #pragma romdata
-static const rom char *info_str = "V01.06\n"; // Change version in usbdsc.c as well!!
+static const rom DEVICE_INFO device_info
+    = {
+    0x00, 0x02,         // Product ID.
+    0x01, 0x01,         // Version.
+    { "XuLA FMW:01.01" }, // Description string.
+    0x00                // Checksum (filled in later).
+    }; // Change version in usb_descriptors.c as well!!
 
 // This table is used to reverse the bits within a byte.  The table has to be located at
 // the beginning of a page because we index into the table by placing the byte value
@@ -121,9 +149,7 @@ static BYTE OutPacketLength = 0;    // Length (in bytes) of most-recently receiv
 static USB_HANDLE InHandle  = 0;    // Handle to endpoint buffer that is currently sending a packet to the host.
 static BYTE InIndex         = 0;    // Index of the endpoint buffer that is currently being filled before being sent to the host.
 static DATA_PACKET *InPacket;       // Pointer to the buffer that is currently being filled.
-static WORD runtest_timer;          // Timer for RUNTEST command.
-static BYTE blink_counter;          // Holds the number of times to blink the LED.
-static BYTE blink_scaler;           // Scaler to reduce blink rate over what can be achieved with only the TIMER3 hardware.
+WORD runtest_timer;          // Timer for RUNTEST command.
 
 #pragma udata usbram2
 static DATA_PACKET InBuffer[2];     // Ping-pong buffers in USB RAM for sending packets to host.
@@ -134,17 +160,19 @@ static DATA_PACKET OutBuffer[2];    // Ping-pong buffers in USB RAM for receivin
 
 void UserInit( void )
 {
+    #if defined( USE_USB_BUS_SENSE_IO )
+    tris_usb_bus_sense = INPUT_PIN;
+    #endif
+
+    #if defined( USE_SELF_POWER_SENSE_IO )
+    tris_self_power    = INPUT_PIN;
+    #endif
+
     DEFAULT_IO_CFG();       // Initialize all the I/O pins.
 
-    blink_counter     = 0;  // No blinks of the LED, yet.
-    T3CON             = 0b00000000; // 12 MHz clock input to TIMER3; TIMER3 disabled.
-    IPR2bits.TMR3IP   = 0;  // Make TIMER3 overflow a low-priority interrupt.
-    PIR2bits.TMR3IF   = 0;  // Clear TIMER3 interrupt flag.
-    PIE2bits.TMR3IE   = 1;  // Enable TIMER3 interrupt.
-    RCONbits.IPEN     = 1;  // Enable prioritized interrupts.
-    INTCONbits.GIEH   = 1;  // Enable high-priority interrupts.
-    INTCONbits.GIEL   = 1;  // Enable low-priority interrupts.
-    T3CONbits.TMR3ON  = 1;  // Enable TIMER3.
+    InitBlinker();
+
+    FPGACLK_ON();
 
     // Setup the Master Synchronous Serial Port in SPI mode.
     PIE1bits.SSPIE    = 0;      // Disable SSP interrupts.
@@ -156,6 +184,9 @@ void UserInit( void )
     SSPCON1bits.SSPM1 = 0;      //    MUST STAY AT THIS SETTING BECAUSE WE ASSUME BYTE TRANSMISSION
     SSPCON1bits.SSPM2 = 0;      //    TAKES 8 INSTRUCTION CYCLES IN THE TDI, TDO LOOPS BELOW!!!
     SSPCON1bits.SSPM3 = 0;
+
+    RCONbits.IPEN     = 1;  // Enable prioritized interrupts.
+    INTERRUPTS_ON();        // Enable high and low-priority interrupts.
 }
 
 
@@ -188,6 +219,7 @@ void ProcessIO( void )
 void ServiceRequests( void )
 {
     BYTE num_return_bytes;          // Number of bytes to return in response to received command.
+    BYTE *tdi;                      // Pointer to the buffer of received TDI bits.
     BYTE *tdo;                      // Pointer to the buffer for returning TDO bits.
     BYTE *tms_tdi;                  // Pointer to the buffer of received TDI & TMS bits.
     DWORD num_bits;                 // # of total bits in stream of bits sent to and from the JTAG device.
@@ -199,40 +231,547 @@ void ServiceRequests( void )
     BYTE bit_mask;                  // Mask to select bit from a byte.
     BYTE bit_cntr;                  // Counter within a byte of bits.
     BYTE tms_byte, tdi_byte, tdo_byte;      // Temporary bytes of TMS, TDI and TDO bits.
-
-    num_return_bytes = 0;   // Initially, assume nothing needs to be returned.
+    BYTE cmd;                     // Store the command in the received packet.
 
     // Process packets received through the primary endpoint.
     if ( !USBHandleBusy( OutHandle ) )
     {
+        num_return_bytes = 0;   // Initially, assume nothing needs to be returned.
+
         // Got a packet, so start getting another packet while we process this one.
-        OutPacket       = &OutBuffer[OutIndex]; // Store pointer to just-received packet.
-        OutPacketLength = USBHandleGetLength( OutHandle );    // Store length of received packet.
-        OutIndex       ^= 1; // Point to next buffer.
-        OutHandle       = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
+        OutPacket        = &OutBuffer[OutIndex]; // Store pointer to just-received packet.
+        OutPacketLength  = USBHandleGetLength( OutHandle );   // Store length of received packet.
+        OutIndex        ^= 1; // Point to next buffer.
+        OutHandle        = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
+        cmd              = OutPacket->cmd;
 
-        blink_counter   = NUM_ACTIVITY_BLINKS;  // Blink the LED whenever a USB transaction occurs.
+        blink_counter    = NUM_ACTIVITY_BLINKS; // Blink the LED whenever a USB transaction occurs.
 
-        switch ( OutPacket->cmd )  // Process the contents of the packet based on the command byte.
+        switch ( cmd )  // Process the contents of the packet based on the command byte.
         {
             case ID_BOARD:
                 // Blink the LED in order to identify the board.
-                blink_counter    = 50;
-                InPacket->cmd    = OutPacket->cmd;
-                num_return_bytes = 1;
+                blink_counter                  = 50;
+                InPacket->cmd                  = cmd;
+                num_return_bytes               = 1;
                 break;
 
             case INFO_CMD:
                 // Return a packet with information about this USB interface device.
-                InPacket->cmd    = OutPacket->cmd;
-                strcpypgm2ram( &InPacket->info_str[0], info_str );
-                num_return_bytes = sizeof( info_str );  // Return information stored in packet.
+                InPacket->cmd                  = cmd;
+                memcpypgm2ram( ( void * )( (BYTE *)InPacket + 1 ), (const rom void *)&device_info, sizeof( DEVICE_INFO ) );
+                InPacket->device_info.checksum = calc_checksum( (CHAR8 *)InPacket, sizeof( DEVICE_INFO ) );
+                num_return_bytes               = sizeof( DEVICE_INFO ) + 1; // Return information stored in packet.
+                break;
+
+
+            case TMS_TDI_CMD:
+                // Output TMS and TDI values and pulse TCK.
+                TMS = OutPacket->tms;
+                TDI = OutPacket->tdi;
+                TCK = 1;
+                TCK = 0;
+                // Don't return any packets.
+                break;
+
+            case TMS_TDI_TDO_CMD:
+                // Sample TDO, output TMS and TDI values, pulse TCK, and return TDO value.
+                InPacket->tdo    = TDO; // Place TDO pin value into the command packet.
+                TMS              = OutPacket->tms;
+                TDI              = OutPacket->tdi;
+                TCK              = 1;
+                TCK              = 0;
+                num_return_bytes = 2;           // Return the packet with the TDO value in it.
+                break;
+
+            case TDI_CMD:       // get USB packets of TDI data, output data to TDI pin of JTAG device
+            case TDI_TDO_CMD:   // get USB packets, output data to TDI pin, input data from TDO pin, send USB packets
+            case TDO_CMD:       // input data from TDO pin of JTAG device, send USB packets of TDO data
+                blink_counter = MAX_BYTE_VAL;   // Blink LED continuously during the long duration of this command.
+
+                // The first packet received contains the TDI_CMD command and the number
+                // of TDI bits that will follow in succeeding packets.
+                num_bits      = OutPacket->num_bits;
+
+                // Exit if no TDI bits will follow (this is probably an error...).
+                if ( num_bits == 0U )
+                    break;
+                num_bytes     = ( num_bits + 7 ) / 8; // Total number of bytes in all the packets that will follow.
+
+                TCK           = 0; // Initialize TCK (should have been low already).
+                TMS           = 0; // Initialize TMS to keep TAP FSM in Shift-IR or Shift-DR state).
+
+                if ( USE_MSSP && ( num_bits > 8U ) )
+                {
+                    TCK_TRIS          = 1; // Disable the TCK output so that the clock won't glitch when the MSSP is enabled.
+                    SSPCON1bits.SSPEN = 1;  // Enable the MSSP.
+                    TCK_TRIS          = 0; // Enable the TCK output after the MSSP glitch is over.
+                }
+
+                // Process the first M-1 of M packets that are completely filled with TDI and/or TDO bits.
+                for ( ; num_bytes > USBGEN_EP_SIZE; num_bytes -= USBGEN_EP_SIZE )
+                {
+                    if ( blink_counter == 0U )
+                    {
+                        blink_counter = MAX_BYTE_VAL;   // Blink LED continuously during the long duration of this command.
+                    }
+                    if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDI_CMD ) )
+                    {
+                        // Wait until a completely filled packet of TDI bits arrives.
+                        while ( USBHandleBusy( OutHandle ) )
+                            ;
+                        OutPacket       = &OutBuffer[OutIndex]; // Store pointer to just-received packet.
+                        OutPacketLength = USBHandleGetLength( OutHandle );    // Store length of received packet.
+                        OutIndex       ^= 1;
+                        OutHandle       = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
+
+                        tdi             = (BYTE *)OutPacket; // Init pointer to the just-received TDI data.
+                    }
+                    tdo         = (BYTE *)InPacket; // TDO data will be written here.
+
+                    // Process the bytes in the TDI packet.
+                    buffer_cntr = OutPacketLength;
+                    save_FSR0   = FSR0;
+                    save_FSR1   = FSR1;
+
+                    if ( cmd == TDI_CMD )
+                    {
+                        TBLPTR = (UINT24)reverse_bits;  // Setup the pointer to the bit-order table.
+                        FSR0   = (WORD)tdi;
+                        #if USE_MSSP
+                        _asm
+                        MOVFF POSTINC0, TBLPTRL             // Get the current TDI byte and use it to index into the bit-order table.
+                        TBLRD                               // TABLAT now contains the TDI byte in the proper bit-order.
+                        MOVFF TABLAT, SSPBUF                // Load TDI byte into SPI transmitter.
+                        NOP
+                        NOP
+PRI_TDI_LOOP_0:
+                        DCFSNZ buffer_cntr, 1, ACCESS       // Decrement the buffer counter and continue if not zero
+                        BRA PRI_TDI_LOOP_1
+                        MOVFF POSTINC0, TBLPTRL             // Get the current TDI byte and use it to index into the bit-order table.
+                        TBLRD                               // TABLAT now contains the TDI byte in the proper bit-order.
+                        MOVFF SSPBUF, TBLPTRL               // Get the TDO byte just to clear the buffer-full flag (don't use TDO).
+                        MOVFF TABLAT, SSPBUF                // Load TDI byte into SPI transmitter ASAP.
+                        BRA PRI_TDI_LOOP_0
+PRI_TDI_LOOP_1:
+                        NOP
+                        NOP
+                        NOP
+                        MOVFF SSPBUF, TBLPTRL               // Get the TDO byte just to clear the buffer-full flag (don't use TDO).
+                        _endasm
+                        #else
+                        _asm
+PRI_TDI_LOOP_0:
+                        MOVFF POSTINC0, TBLPTRL             // Get the current TDI byte and use it to index into the bit-order table.
+                        TBLRD                               // TABLAT now contains the TDI byte in the proper bit-order.
+                        // Bit 7 of a byte of TDI/TDO bits.
+                        RLCF TABLAT, 1, ACCESS              // Rotate TDI bit into carry.
+                        BSF TDI_ASM                     // Set TDI pin of JTAG device to value of TDI bit.
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM                     // Toggle TCK pin of JTAG device.
+                        BCF TCK_ASM
+                        // Bit 6
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 5
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 4
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 3
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 2
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 1
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 0
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        DECFSZ buffer_cntr, 1, ACCESS       // Decrement the buffer counter and continue
+                        BRA PRI_TDI_LOOP_0                  //   processing TDI bytes until it is 0.
+                        _endasm
+                        #endif
+                    }
+                    else if ( cmd == TDI_TDO_CMD )
+                    {
+                        TBLPTR = (UINT24)reverse_bits;  // Setup the pointer to the bit-order table.
+                        FSR0   = (WORD)tdi;
+                        FSR1   = (WORD)tdo;
+                        #if USE_MSSP
+                        _asm
+PRI_TDI_TDO_LOOP_0:
+                        MOVFF POSTINC0, TBLPTRL             // Get the current TDI byte and use it to index into the bit-order table.
+                        TBLRD                               // TABLAT now contains the TDI byte in the proper bit-order.
+                        MOVFF TABLAT, SSPBUF                // Load TDI byte into SPI transmitter.
+                        NOP                                 // The NOPs are used to insert delay while the SSPBUF is tx/rx'ed.
+                        NOP
+                        NOP
+                        NOP
+                        NOP
+                        NOP
+                        NOP
+                        NOP
+                        NOP
+                        NOP
+                        MOVFF SSPBUF, TBLPTRL               // Get the TDO byte that was received and use it to index into the bit-order table.
+                        TBLRD                               // TABLAT now contains the TDO byte in the proper bit-order.
+                        MOVFF TABLAT, POSTINC1              // Store the TDO byte into the buffer and inc. the pointer.
+                        DECFSZ buffer_cntr, 1, ACCESS       // Decrement the buffer counter and continue
+                        BRA PRI_TDI_TDO_LOOP_0              //   processing TDI bytes until it is 0.
+                        _endasm
+                        #else
+                        _asm
+PRI_TDI_TDO_LOOP_0:
+                        MOVFF POSTINC0, TBLPTRL             // Get the current TDI byte and use it to index into the bit-order table.
+                        TBLRD                               // TABLAT now contains the TDI byte in the proper bit-order.
+                        // Bit 7 of a byte of TDI/TDO bits.
+                        BCF CARRY_BIT_ASM                   // Set carry to value on TDO pin of JTAG device.
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS              // Rotate TDO value into TABLAT register and TDI bit into carry.
+                        BSF TDI_ASM                     // Set TDI pin of JTAG device to value of TDI bit.
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM                     // Toggle TCK pin of JTAG device.
+                        BCF TCK_ASM
+                        // Bit 6
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 5
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 4
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 3
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 2
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 1
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 0
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TDI_ASM
+                        BTFSS CARRY_BIT_ASM
+                        BCF TDI_ASM
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+
+                        MOVFF TABLAT, TBLPTRL               // Get the TDO byte that was received and use it to index into the bit-order table.
+                        TBLRD                               // TABLAT now contains the TDO byte in the proper bit-order.
+                        MOVFF TABLAT, POSTINC1              // Store the TDO byte into the buffer and inc. the pointer.
+                        DECFSZ buffer_cntr, 1, ACCESS       // Decrement the buffer counter and continue
+                        BRA PRI_TDI_TDO_LOOP_0              //   processing TDI bytes until it is 0.
+                        _endasm
+                        #endif
+                    }
+                    else // cmd == TDO_CMD
+                    {
+                        TBLPTR = (UINT24)reverse_bits;  // Setup the pointer to the bit-order table.
+                        FSR0   = (WORD)tdo;
+                        #if USE_MSSP
+                        _asm
+                        MOVLW   0                           // Load the SPI transmitter with 0's
+                        MOVWF SSPBUF, ACCESS                //   so TDI is cleared while TDO is collected.
+                        NOP                                 // The NOPs are used to insert delay while the SSPBUF is tx/rx'ed.
+                        NOP
+                        NOP
+                        NOP
+                        NOP
+                        NOP
+PRI_TDO_LOOP_0:
+                        NOP
+                        NOP
+                        DCFSNZ buffer_cntr, 1, ACCESS
+                        BRA PRI_TDO_LOOP_1
+                        MOVFF SSPBUF, TBLPTRL               // Get the TDO byte that was received and use it to index into the bit-order table.
+                        MOVWF SSPBUF, ACCESS
+                        TBLRD                               // TABLAT now contains the TDO byte in the proper bit-order.
+                        MOVFF TABLAT, POSTINC0              // Store the TDO byte into the buffer and inc. the pointer.
+                        BRA PRI_TDO_LOOP_0
+PRI_TDO_LOOP_1:
+                        MOVFF SSPBUF, TBLPTRL               // Get the TDO byte that was received and use it to index into the bit-order table.
+                        TBLRD                               // TABLAT now contains the TDO byte in the proper bit-order.
+                        MOVFF TABLAT, POSTINC0              // Store the TDO byte into the buffer and inc. the pointer.
+                        _endasm
+                        #else
+                        _asm
+PRI_TDO_LOOP_0:
+                        // Bit 7 of a byte of TDI/TDO bits.
+                        BCF CARRY_BIT_ASM                   // Set carry to value on TDO pin of JTAG device.
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS              // Rotate TDO value into TABLAT register.
+                        BSF TCK_ASM                     // Toggle TCK pin of JTAG device.
+                        BCF TCK_ASM
+                        // Bit 6
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 5
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 4
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 3
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 2
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 1
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+                        // Bit 0
+                        BCF CARRY_BIT_ASM
+                        BTFSC TDO_ASM
+                        BSF CARRY_BIT_ASM
+                        RLCF TABLAT, 1, ACCESS
+                        BSF TCK_ASM
+                        BCF TCK_ASM
+
+                        MOVFF TABLAT, TBLPTRL               // Get the TDO byte that was received and use it to index into the bit-order table.
+                        TBLRD                               // TABLAT now contains the TDO byte in the proper bit-order.
+                        MOVFF TABLAT, POSTINC0              // Store the TDO byte into the buffer and inc. the pointer.
+                        DECFSZ buffer_cntr, 1, ACCESS       // Decrement the buffer counter and continue
+                        BRA PRI_TDO_LOOP_0                  //   processing TDI bytes until it is 0.
+                        _endasm
+                        #endif
+                    }  // All the TDI bytes in the current packet have been processed.
+
+                    FSR1 = save_FSR1;
+                    FSR0 = save_FSR0;
+
+                    // Once all the TDI bits from a complete packet are sent to the JTAG port,
+                    // send all the recorded TDO bits back in a complete packet.
+                    if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDO_CMD ) )
+                    {
+                        while ( USBHandleBusy( InHandle ) )
+                        {
+                            ;                             // Wait until USB transmitter is not busy.
+                        }
+                        InHandle = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, ( OutPacketLength ) );
+                        InIndex ^= 1;
+                        InPacket = &InBuffer[InIndex];
+                    }
+                }  // First M-1 TDI packets have been processed.
+
+                num_final_bytes = num_bytes;
+
+                if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDI_CMD ) )
+                {
+                    // Now wait until the final TDI packet arrives.
+                    while ( USBHandleBusy( OutHandle ) )
+                        ;
+                    OutPacket       = &OutBuffer[OutIndex];     // Store pointer to just-received packet.
+                    OutPacketLength = USBHandleGetLength( OutHandle );        // Store length of received packet.
+                    OutIndex       ^= 1;
+                    OutHandle       = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
+
+                    tdi             = (BYTE *)OutPacket; // Init pointer to the just-received TDI data.
+                }
+                tdo = (BYTE *)InPacket;
+
+                // Process all except the last byte in the final packet of TDI bits.
+                for ( buffer_cntr = num_final_bytes; buffer_cntr > 1U; buffer_cntr-- )
+                {
+                    // Read a byte from the packet, re-order the bits (if necessary), and transmit it
+                    // through the SSP starting at the most-significant bit.
+                    #if USE_MSSP
+                    if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDI_CMD ) )
+                        SSPBUF = reverse_bits[*tdi++];
+                    else
+                        SSPBUF = 0;
+                    _asm
+BF_TEST_LOOP_1:
+                    MOVF SSPSTAT, TO_WREG, ACCESS           // Wait for the TDI byte to be transmitted.
+                    BTFSS MSSP_BF_ASM                       // (Can't check SSPSTAT directly or else the transfer doesn't work.)
+                    BRA BF_TEST_LOOP_1
+                    _endasm
+                    *tdo++ = reverse_bits[SSPBUF];      // Always read the SSPBUFF to clear the buffer-full flag, even if TDO bits are not needed.
+                    #else
+                    if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDI_CMD ) )
+                        tdi_byte = reverse_bits[*tdi++];
+                    else
+                        tdi_byte = 0;
+                    tdo_byte = 0;
+                    for ( bit_cntr = 8, bit_mask = 0x80; bit_cntr > 0U; bit_cntr--, bit_mask >>= 1 )
+                    {
+                        if ( TDO )
+                            tdo_byte |= bit_mask;
+                        TDI = tdi_byte & bit_mask ? 1 : 0;
+                        TCK = 1;
+                        TCK = 0;
+                    }     // The final bits in the last TDI byte have been processed.
+                    if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDO_CMD ) )
+                        *tdo++ = reverse_bits[tdo_byte];
+                    #endif
+                }
+
+                // Send the last few bits of the last packet of TDI bits.
+                #if USE_MSSP
+                TCK               = 0;
+                SSPCON1bits.SSPEN = 0;      // Turn off the MSSP.  The remaining bits are transmitted manually.
+                #endif
+
+                // Compute the number of TDI bits in the final byte of the final packet.
+                // (This computation only works because num_bits != 0.)
+                bit_cntr          = num_bits & 0x7;
+                if ( bit_cntr == 0U )
+                    bit_cntr = 8U;
+                if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDI_CMD ) )
+                    tdi_byte = reverse_bits[*tdi];
+                else
+                    tdi_byte = 0;
+                tdo_byte          = 0;
+                for ( bit_mask = 0x80; bit_cntr > 0U; bit_cntr--, bit_mask >>= 1 )
+                {
+                    if ( bit_cntr == 1U )
+                    {
+                        TMS = 1;    // Raise TMS to exit Shift-IR or Shift-DR state on the final TDI bit.
+                    }
+                    if ( TDO )
+                        tdo_byte |= bit_mask;
+                    TDI = tdi_byte & bit_mask ? 1 : 0;
+                    TCK = 1;
+                    TCK = 0;
+                } // The final bits in the last TDI byte have been processed.
+                if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDO_CMD ) )
+                    *tdo = reverse_bits[tdo_byte];
+                if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDO_CMD ) )
+                {
+                    // Send back the final packet of TDO bits.
+                    while ( USBHandleBusy( InHandle ) )
+                    {
+                        ;                                 // Wait until USB transmitter is not busy.
+                    }
+                    InHandle = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, ( OutPacketLength ) );
+                    InIndex ^= 1;
+                    InPacket = &InBuffer[InIndex];
+                }
+
+                num_return_bytes = 0;   // Any packets with TDO data have already been sent.
+
+                // Blink the LED a few times after a long command completes.
+                if ( blink_counter < MAX_BYTE_VAL - NUM_ACTIVITY_BLINKS )
+                {
+                    blink_counter = 0;  // Already done enough LED blinks.
+                }
+                else
+                {
+                    blink_counter -= ( MAX_BYTE_VAL - NUM_ACTIVITY_BLINKS );    // Do at least the minimum number of blinks.
+                }
                 break;
 
             case TAP_SEQ_CMD:       // Output TMS & TDI values; get TDO value
-                num_return_bytes = 0;   // This command doesn't return any bytes by the default return routine.
+                num_return_bytes = 0;               // This command doesn't return any bytes by the default return routine.
 
-                blink_counter    = MAX_BYTE_VAL; // Blink LED continuously during the (long) duration of this command.
+                blink_counter    = MAX_BYTE_VAL;               // Blink LED continuously during the (long) duration of this command.
 
                 // The first packet received contains the TAP_SEQ_CMD command and the number
                 // of TDI bits that will follow in succeeding packets.
@@ -240,13 +779,14 @@ void ServiceRequests( void )
 
                 // Exit if no TDI bits will follow (this is probably an error...).
                 if ( num_bits == 0U )
-                    break;
-                // Get flags from the first packet that indicate how TMS and TDO bits are handled.
+                {
+                    break; // Get flags from the first packet that indicate how TMS and TDO bits are handled.
+                }
                 flags      = OutPacket->flags;
 
-                hdr_size   = TAP_SEQ_CMD_HDR_LEN; // Size of the command header in the first packet.
-                tms_tdi    = (BYTE *)OutPacket + hdr_size; // Pointer to TMS+TDI bits that follow command bytes in first packet.
-                tdo        = (BYTE *)InPacket; // Pointer to buffer for storing TDO bits.
+                hdr_size   = TAP_SEQ_CMD_HDR_LEN;                     // Size of the command header in the first packet.
+                tms_tdi    = (BYTE *)OutPacket + hdr_size;                     // Pointer to TMS+TDI bits that follow command bytes in first packet.
+                tdo        = (BYTE *)InPacket;                     // Pointer to buffer for storing TDO bits.
 
                 // Total number of header+TMS+TDI bytes in all the packets for this command.
                 num_bytes  = (DWORD)( ( num_bits + 7 ) / 8 );
@@ -257,7 +797,7 @@ void ServiceRequests( void )
                 num_bytes += hdr_size;
 
                 // Initialize TCK, TMS and TDI levels.
-                TCK        = 0; // Initialize TCK (should have been low already).
+                TCK        = 0;                     // Initialize TCK (should have been low already).
                 if ( !( flags & PUT_TMS_MASK ) )
                 {
                     TMS = ( flags & TMS_VAL_MASK ) ? 1 : 0; // No TMS bits in packets, so set TMS to the static value indicated in the flag bit.
@@ -268,7 +808,7 @@ void ServiceRequests( void )
                 }
                 // Process the first M-1 of M packets that are completely filled with TMS+TDI bits.
                 flags &= ~DO_MULTIPLE_PACKETS_MASK; // Assume this command uses a single USB packet.
-                for ( ; num_bytes > USBGEN_EP_SIZE; num_bytes -= OutPacketLength )
+                for ( ; num_bytes > OutPacketLength; num_bytes -= OutPacketLength )
                 {
                     flags |= DO_MULTIPLE_PACKETS_MASK;  // Record that this command extends over multiple USB packets.
 
@@ -569,8 +1109,9 @@ PRI_TAP_LOOP_1:
                 // (This computation only works because num_bits != 0.)
                 bit_cntr = num_bits & 0x7;
                 if ( bit_cntr == 0U )
-                    bit_cntr = 8U;
-                // Read last TMS & TDI bytes from the packet and transmit them.
+                {
+                    bit_cntr = 8U; // Read last TMS & TDI bytes from the packet and transmit them.
+                }
                 if ( flags & PUT_TMS_MASK )
                     tms_byte = *tms_tdi++;
                 if ( flags & PUT_TDI_MASK )
@@ -592,7 +1133,7 @@ PRI_TAP_LOOP_1:
                 // Send back the final packet of TDO bits.
                 if ( flags & GET_TDO_MASK )
                 {
-                    *tdo = tdo_byte; // Store last few TDO bits into the outgoing packet.
+                    *tdo = tdo_byte;     // Store last few TDO bits into the outgoing packet.
                     while ( USBHandleBusy( InHandle ) )
                     {
                         ;                             // Wait until USB transmitter is not busy.
@@ -633,6 +1174,7 @@ PRI_TAP_LOOP_1:
                         TCK ^= 1;
                         TCK ^= 1;
                     }
+
                 memcpy( (void *)InPacket, (void *)OutPacket, 5 );
                 num_return_bytes = 5; // return the entire command as an acknowledgement
                 break;
@@ -665,33 +1207,3 @@ PRI_TAP_LOOP_1:
         }
     }
 } /* ServiceRequests */
-
-
-
-#pragma interruptlow BlinkLED
-void BlinkLED( void )
-{
-    PIR2bits.TMR3IF = 0;    // Clear the timer interrupt flag.
-
-    runtest_timer--;
-
-    // Decrement the scaler and reload it when it reaches zero.
-    if ( blink_scaler == 0U )
-        blink_scaler = BLINK_SCALER;
-    blink_scaler--;
-
-    if ( USBGetDeviceState() < ADDRESS_STATE )   // Turn off the LED if the USB device has not linked with the PC yet.
-        LED_OFF();
-    else
-    // The USB device has linked with the PC, so activate the LED.
-    if ( blink_scaler == 0U ) // Only update the LED state when the scaler reaches zero.
-    {
-        if ( blink_counter > 0U ) // Toggle the LED as long as the blink counter is non-zero.
-        {
-            LED_TOGGLE();
-            blink_counter--;
-        }
-        else    // Make sure the LED is left on after the blinking is done.
-            LED_ON();
-    }
-}

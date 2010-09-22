@@ -27,6 +27,7 @@
 #include "USB/usb_function_generic.h"
 #include "HardwareProfile.h"
 #include "user.h"
+#include "Blinker.h"
 
 static void InitializeSystem( void );
 void USBDeviceTasks( void );
@@ -71,10 +72,19 @@ void Remapped_High_ISR( void )
 
 
 
+#pragma code
+#pragma interrupt YourLowPriorityISRCode
+void YourLowPriorityISRCode()
+{
+    Blinker();
+}   //This return will be a "retfie fast", since this is in a #pragma interrupt section
+
+
+
 #pragma code REMAPPED_LOW_INTERRUPT_VECTOR = REMAPPED_LOW_INTERRUPT_VECTOR_ADDRESS
 void Remapped_Low_ISR( void )
 {
-    _asm goto BlinkLED _endasm
+    _asm goto YourLowPriorityISRCode _endasm
 }
 
 
@@ -104,14 +114,6 @@ void main( void )
 
 static void InitializeSystem( void )
 {
-    #if defined( USE_USB_BUS_SENSE_IO )
-    tris_usb_bus_sense = INPUT_PIN;
-    #endif
-
-    #if defined( USE_SELF_POWER_SENSE_IO )
-    tris_self_power    = INPUT_PIN;
-    #endif
-
     UserInit();
     USBDeviceInit();
 }

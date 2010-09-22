@@ -18,18 +18,19 @@
 //====================================================================
 //
 // Module Description:
-//  Include file for user.c.
+//  Common utility routines.
 //
 //********************************************************************
 
-#ifndef USER_H
-#define USER_H
+#ifndef UTILS_H
+#define UTILS_H
 
-extern WORD runtest_timer;
+#include "GenericTypeDefs.h"
 
-void UserInit( void );
-void ServiceRequests( void );
-void ProcessIO( void );
-void BlinkLED( void );
+#define INTERRUPTS_ON() INTCONbits.GIEH  = 1, INTCONbits.GIEL = 1
+#define INTERRUPTS_OFF() INTCONbits.GIEH = 0, INTCONbits.GIEL = 0
 
-#endif //USER_H
+void insert_delay( DWORD u_secs );
+BYTE calc_checksum( BYTE *byte, WORD len );
+
+#endif

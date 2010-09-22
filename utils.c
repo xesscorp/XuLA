@@ -18,18 +18,48 @@
 //====================================================================
 //
 // Module Description:
-//  Include file for user.c.
+//  Common utility routines.
 //
 //********************************************************************
 
-#ifndef USER_H
-#define USER_H
 
-extern WORD runtest_timer;
+#include <delays.h>
+#include "GenericTypeDefs.h"
+#include "HardwareProfile.h"
 
-void UserInit( void );
-void ServiceRequests( void );
-void ProcessIO( void );
-void BlinkLED( void );
 
-#endif //USER_H
+//
+// Insert a delay of the requested number of microseconds.
+//
+void insert_delay( DWORD u_secs )
+{
+    DWORD instr_cycles = u_secs * MIPS;
+
+    if ( instr_cycles < 10U )
+        ;
+    else if ( instr_cycles < 10U * 0xFFU )
+        Delay10TCYx( instr_cycles / 10U );
+    else if ( instr_cycles < 100U * 0xFFU )
+        Delay100TCYx( instr_cycles / 100U );
+    else if ( instr_cycles < 1000U * 0xFFU )
+        Delay1KTCYx( instr_cycles / 1000U );
+    else
+    {
+        for ( ; instr_cycles > 10000U; instr_cycles -= 10000 )
+            Delay10KTCYx( 1 );
+        insert_delay( instr_cycles / MIPS );
+    }
+}
+
+
+
+//
+// Calculate the checksum for a byte array.
+//
+BYTE calc_checksum( BYTE *byte, WORD len )
+{
+    BYTE checksum;
+    for ( checksum = 0U; len > 0U; len-- )
+        checksum += *byte++;
+    return -checksum;
+}

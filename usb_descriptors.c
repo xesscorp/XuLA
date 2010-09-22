@@ -221,7 +221,8 @@ ROM BYTE configDescriptor1 [] = {
 
 
 //Language code string descriptor
-ROM struct {
+ROM struct
+{
     BYTE bLength;
     BYTE bDscType;
     WORD string[1];
@@ -231,7 +232,8 @@ sd000 = {
 };
 
 //Manufacturer string descriptor
-ROM struct {
+ROM struct
+{
     BYTE bLength;
     BYTE bDscType;
     WORD string[36];
@@ -243,7 +245,8 @@ sd001 = {
 };
 
 //Product string descriptor
-ROM struct {
+ROM struct
+{
     BYTE bLength;
     BYTE bDscType;
     WORD string[29];
