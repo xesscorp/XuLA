@@ -168,11 +168,9 @@ void UserInit( void )
     tris_self_power    = INPUT_PIN;
     #endif
 
-    DEFAULT_IO_CFG();       // Initialize all the I/O pins.
+    DEFAULT_IO_CFG();           // Initialize all the I/O pins.
 
     InitBlinker();
-
-    FPGACLK_ON();
 
     // Setup the Master Synchronous Serial Port in SPI mode.
     PIE1bits.SSPIE    = 0;      // Disable SSP interrupts.
@@ -185,8 +183,12 @@ void UserInit( void )
     SSPCON1bits.SSPM2 = 0;      //    TAKES 8 INSTRUCTION CYCLES IN THE TDI, TDO LOOPS BELOW!!!
     SSPCON1bits.SSPM3 = 0;
 
-    RCONbits.IPEN     = 1;  // Enable prioritized interrupts.
-    INTERRUPTS_ON();        // Enable high and low-priority interrupts.
+    RCONbits.IPEN     = 1;      // Enable prioritized interrupts.
+    INTERRUPTS_ON();            // Enable high and low-priority interrupts.
+
+    PROGB = 1;                  // Enable configuration of the FPGA.
+
+    FPGACLK_ON();               // Give the FPGA a clock.
 }
 
 
@@ -807,10 +809,9 @@ BF_TEST_LOOP_1:
                     TDI = ( flags & TDI_VAL_MASK ) ? 1 : 0; // No TDI bits in packets, so set TDI to the static value indicated in the flag bit.
                 }
                 // Process the first M-1 of M packets that are completely filled with TMS+TDI bits.
-                flags &= ~DO_MULTIPLE_PACKETS_MASK; // Assume this command uses a single USB packet.
-                for ( ; num_bytes > OutPacketLength; num_bytes -= OutPacketLength )
+                while ( num_bytes > OutPacketLength )
                 {
-                    flags |= DO_MULTIPLE_PACKETS_MASK;  // Record that this command extends over multiple USB packets.
+                    num_bytes -= OutPacketLength;
 
                     if ( blink_counter == 0U )
                     {
