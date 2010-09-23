@@ -125,14 +125,12 @@
 
 /** FPGA clock pin control ******************************************/
 #define FPGACLK_PORT    C
-#define FPGACLK0_BIT    2
-#define FPGACLK1_BIT    4
-#define FPGACLK2_BIT    5
-#define FPGACLK_MASK    ( 1 << FPGACLK0_BIT ) | ( 1 << FPGACLK1_BIT ) | ( 1 << FPGACLK2_BIT )
-#define FPGACLK_TRIS    TRIS( C, 2 ) = TRIS( C, 4 ) = TRIS( C, 5 )
-#define FPGACLK         LATCH( C, 2 ) = LATCH( C, 4 ) = LATCH( C, 5 )
-#define FPGACLK_ON()    PSTRCON = 0b00001011
-#define FPGACLK_OFF()   PSTRCON = 0b00000000
+#define FPGACLK_BIT     4
+#define FPGACLK_MASK    ( 1 << FPGACLK_BIT )
+#define FPGACLK_TRIS    TRIS( C, 4 )
+#define FPGACLK         LATCH( C, 4 )
+#define FPGACLK_ON()    PSTRCONbits.STRB = 1
+#define FPGACLK_OFF()   PSTRCONbits.STRB = 0
 #define INIT_FPGACLK()  FPGACLK_OFF(), FPGACLK = 0, FPGACLK_TRIS = OUTPUT_PIN, \
                         T2CON = 0b00000100, PR2 = 0, CCPR1L = 0, CCP1CON = 0b00101100
 
@@ -167,7 +165,7 @@
 #define INIT_TDI()      TDI = 0, TDI_TRIS = OUTPUT_PIN
 
 /** Default configuration of I/O pins ******************************/
-#define DEFAULT_IO_CFG() ANSEL = 0, ANSELH = 0, INIT_SENSE_1V(), INIT_SENSE_3V(),\
+#define DEFAULT_IO_CFG() SLRCON = 0, ANSEL = 0, ANSELH = 0, INIT_SENSE_1V(), INIT_SENSE_3V(),\
     INIT_TDO(), INIT_TMS(), INIT_TCK(), INIT_FMWB(),\
     INIT_DONE(), INIT_PROGB(), INIT_FPGACLK(),\
     INIT_LED(), INIT_TDI()
