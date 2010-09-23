@@ -129,8 +129,8 @@
 #define FPGACLK_MASK    ( 1 << FPGACLK_BIT )
 #define FPGACLK_TRIS    TRIS( C, 4 )
 #define FPGACLK         LATCH( C, 4 )
-#define FPGACLK_ON()    PSTRCONbits.STRB = 1
-#define FPGACLK_OFF()   PSTRCONbits.STRB = 0
+#define FPGACLK_ON()    PSTRCON = 0b00000010
+#define FPGACLK_OFF()   PSTRCON = 0
 #define INIT_FPGACLK()  FPGACLK_OFF(), FPGACLK = 0, FPGACLK_TRIS = OUTPUT_PIN, \
                         T2CON = 0b00000100, PR2 = 0, CCPR1L = 0, CCP1CON = 0b00101100
 
