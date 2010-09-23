@@ -73,7 +73,7 @@ void Remapped_High_ISR( void )
 
 
 #pragma code
-#pragma interrupt YourLowPriorityISRCode
+#pragma interruptlow YourLowPriorityISRCode
 void YourLowPriorityISRCode()
 {
     Blinker();
