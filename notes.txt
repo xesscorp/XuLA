@@ -58,13 +58,29 @@ DESIGN CHANGES
    so they are easier to cut without cutting nearby wires.
 2. Power uC off of +3.3V instead of +5V.
 3. Reduce size of +5V polygon.
-4. Put series resistor in fpga-clk trace near uC.
+4. Put series resistor in fpga-clk trace near uC so 3.3V output can drive
+   2.5V input.
 5. Reduce package size of SPI flash.
 6. Put 0.1uF bypass cap to 3.3V near U2.
 7. Move 3.3V via near C15 so the 2.5V plane can be thickened.
 8. Possibly a pullup resistor is needed on the serial flash chip-enable
    so it tracks the +3.3V supply upon power-up.
-
+9. Voltage dividers are not needed on 3V and 1V sense lines since the
+   1.024 FVR in the uC can be multiplied internally x2 or x4.
+10. Change R4 from 741X163331 to 742C163101 (330 ohm -> 100 ohm
+    and a larger package.
+11. Generate FPGACLK by PWM; remove +3.3V on INT1 pin.
+12. Input of U7 should come from +3.3V plane, not directly from output
+    of U6.
+13. Replace FAN1112 (U7) with ZLDO1117-1.2V.
+14. Place a series resistor between flash SO pin and rest of A10 net so
+    it can't drive against the FPGA pin.
+15. Replace USB-A connector with USB-B mini connector.
+16. Use 3.3V for VCCAUX instead of 2.5V.  Remove 2.5V regulator.
+17. Tie DQMH, DQML low on the SDRAM to free a pin on the FPGA. Remove DQM
+    net.  Move the following FPGA pins:
+    A3 -> P31; CHAN17,16 -> P34,P35; CHAN0,1 -> P36,P37; CHAN2 -> P39;
+    FPGA-CLK -> P43; CHAN-CLK -> P44.  Place SDRAM-CLK1 on pins P40, P41.
 
 
 DESIGN IDEAS
