@@ -96,6 +96,15 @@
 #define FMWB_ASM    PORT_ASM( B, 7 )
 #define INIT_FMWB() INTCON2bits.NOT_RABPU = 0, LATCH( B, 7 ) = 1, FMWB_TRIS = INPUT_PIN
 
+/** Serial flash disable *******************************************/
+#define FLSHDSBL_PORT   B
+#define FLSHDSBL_BIT    7
+#define FLSHDSBL_MASK   ( 1 << FLSHDSBL_BIT )
+#define FLSHDSBL_TRIS   TRIS( B, 7 )
+#define FLSHDSBL        PORT( B, 7 )
+#define FLSHDSBL_ASM    PORT_ASM( B, 7 )
+#define INIT_FLSHDSBL() FLSHDSBL = 1, FLSHDSBL_TRIS = OUTPUT_PIN
+
 /** FPGA DONE pin***************************************************/
 #define DONE_PORT   C
 #define DONE_BIT    0
@@ -166,7 +175,7 @@
 
 /** Default configuration of I/O pins ******************************/
 #define DEFAULT_IO_CFG() SLRCON = 0, ANSEL = 0, ANSELH = 0, INIT_SENSE_1V(), INIT_SENSE_3V(),\
-    INIT_TDO(), INIT_TMS(), INIT_TCK(), INIT_FMWB(),\
+    INIT_TDO(), INIT_TMS(), INIT_TCK(), INIT_FLSHDSBL(),\
     INIT_DONE(), INIT_PROGB(), INIT_FPGACLK(),\
     INIT_LED(), INIT_TDI()
 
