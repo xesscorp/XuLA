@@ -52,7 +52,7 @@ Design Considerations
 	
 	
 	
-DESIGN CHANGES
+DESIGN CHANGES (0.1 -> 0.2)
 ========================================================================
 1. Move and thin shorts on +5V, +3.3V and +1.2V jumpers
    so they are easier to cut without cutting nearby wires.
@@ -80,6 +80,10 @@ DESIGN CHANGES
     A3 -> P31; CHAN17,16 -> P34,P35; CHAN0,1 -> P36,P37; CHAN2 -> P39;
     FPGA-CLK -> P43; CHAN-CLK -> P44.  Place SDRAM-CLK1 on pins P40, P41.
 18. Place MCLR# on header pin for XuLA reset and for boot programming.
+	
+DESIGN CHANGES (0.2 -> 0.3)
+========================================================================
+1. Add 510 Ohm pulldown to TCK pin of FPGA.
 
 
 DESIGN IDEAS
