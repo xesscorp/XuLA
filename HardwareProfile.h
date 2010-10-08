@@ -94,7 +94,8 @@
 #define FMWB_TRIS   TRIS( B, 7 )
 #define FMWB        PORT( B, 7 )
 #define FMWB_ASM    PORT_ASM( B, 7 )
-#define INIT_FMWB() INTCON2bits.NOT_RABPU = 0, LATCH( B, 7 ) = 1, FMWB_TRIS = INPUT_PIN
+// Disable Port B pullups so they don't interfere with MSSP TCK pin when it starts up.
+#define INIT_FMWB() INTCON2bits.NOT_RABPU = 1, LATCH( B, 7 ) = 1, FMWB_TRIS = INPUT_PIN
 
 /** Serial flash disable *******************************************/
 #define FLSHDSBL_PORT   B
@@ -177,7 +178,7 @@
 #define DEFAULT_IO_CFG() SLRCON = 0, ANSEL = 0, ANSELH = 0, INIT_SENSE_1V(), INIT_SENSE_3V(),\
     INIT_TDO(), INIT_TMS(), INIT_TCK(), INIT_FLSHDSBL(),\
     INIT_DONE(), INIT_PROGB(), INIT_FPGACLK(),\
-    INIT_LED(), INIT_TDI()
+    INIT_LED(), INIT_TDI(), INTCON2bits.NOT_RABPU = 1
 
 
 /** Some common uC bits ********************************************/

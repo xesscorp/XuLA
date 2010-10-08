@@ -101,7 +101,7 @@ typedef union DATA_PACKET
 #define NUM_ACTIVITY_BLINKS 10          // Indicate activity by blinking the LED this many times.
 #define BLINK_SCALER 10                 // Make larger to stretch the time between LED blinks.
 #define DO_DELAY_THRESHOLD 5461UL       // Threshold between pulsing TCK or using a timer = (1000000 / (12000000 / 256))
-#define USE_MSSP TRUE                   // True if driving JTAG with MSSP block; false to use bit-banging.
+#define USE_MSSP     1                  // True if driving JTAG with MSSP block; false to use bit-banging.
 
 
 #pragma romdata
@@ -142,14 +142,14 @@ static near BYTE buffer_cntr;               // Holds the number of bytes left to
 static near WORD save_FSR0, save_FSR1;      // Used for saving the contents of PIC hardware registers.
 
 #pragma udata
-static USB_HANDLE OutHandle = 0;    // Handle to endpoint buffer that is currently receiving a packet from the host.
-static BYTE OutIndex        = 0;    // Index of endpoint buffer that is currently receiving a packet from the host.
-static DATA_PACKET *OutPacket;      // Pointer to the buffer with the most-recently received packet.
-static BYTE OutPacketLength = 0;    // Length (in bytes) of most-recently received packet.
-static USB_HANDLE InHandle  = 0;    // Handle to endpoint buffer that is currently sending a packet to the host.
-static BYTE InIndex         = 0;    // Index of the endpoint buffer that is currently being filled before being sent to the host.
-static DATA_PACKET *InPacket;       // Pointer to the buffer that is currently being filled.
-WORD runtest_timer;          // Timer for RUNTEST command.
+static USB_HANDLE OutHandle[2] = {0,0}; // Handles to endpoint buffers that are receiving packets from the host.
+static BYTE OutIndex           = 0;     // Index of endpoint buffer has received a complete packet from the host.
+static DATA_PACKET *OutPacket;          // Pointer to the buffer with the most-recently received packet.
+static BYTE OutPacketLength    = 0;     // Length (in bytes) of most-recently received packet.
+static USB_HANDLE InHandle[2]  = {0,0}; // Handles to ping-pong endpoint buffers that are sending packets to the host.
+static BYTE InIndex            = 0;     // Index of the endpoint buffer that is currently being filled before being sent to the host.
+static DATA_PACKET *InPacket;           // Pointer to the buffer that is currently being filled.
+WORD runtest_timer;                     // Timer for RUNTEST command.
 
 #pragma udata usbram2
 static DATA_PACKET InBuffer[2];     // Ping-pong buffers in USB RAM for sending packets to host.
@@ -189,6 +189,8 @@ void UserInit( void )
     PROGB = 1;                  // Enable configuration of the FPGA.
 
     FPGACLK_ON();               // Give the FPGA a clock.
+
+    INTCON2bits.NOT_RABPU = 1;
 }
 
 
@@ -200,10 +202,13 @@ void USBCBInitEP( void )
 {
     // Enable the endpoint.
     USBEnableEndpoint( USBGEN_EP_NUM, USB_OUT_ENABLED | USB_IN_ENABLED | USB_HANDSHAKE_ENABLED | USB_DISALLOW_SETUP );
-    // Now begin waiting for the first packet to be received from the host via this endpoint.
-    OutHandle = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
+    // Now begin waiting for the first packets to be received from the host via this endpoint.
+    OutIndex = 0;
+    OutHandle[0] = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[0], USBGEN_EP_SIZE );
+    OutHandle[1] = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[1], USBGEN_EP_SIZE );
     // Initialize the pointer to the buffer which will return data to the host via this endpoint.
-    InPacket  = &InBuffer[InIndex];
+    InIndex = 0;
+    InPacket  = &InBuffer[0];
 }
 
 
@@ -236,15 +241,13 @@ void ServiceRequests( void )
     BYTE cmd;                     // Store the command in the received packet.
 
     // Process packets received through the primary endpoint.
-    if ( !USBHandleBusy( OutHandle ) )
+    if ( !USBHandleBusy( OutHandle[OutIndex] ) )
     {
         num_return_bytes = 0;   // Initially, assume nothing needs to be returned.
 
         // Got a packet, so start getting another packet while we process this one.
         OutPacket        = &OutBuffer[OutIndex]; // Store pointer to just-received packet.
-        OutPacketLength  = USBHandleGetLength( OutHandle );   // Store length of received packet.
-        OutIndex        ^= 1; // Point to next buffer.
-        OutHandle        = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
+        OutPacketLength  = USBHandleGetLength( OutHandle[OutIndex] );   // Store length of received packet.
         cmd              = OutPacket->cmd;
 
         blink_counter    = NUM_ACTIVITY_BLINKS; // Blink the LED whenever a USB transaction occurs.
@@ -265,8 +268,7 @@ void ServiceRequests( void )
                 InPacket->device_info.checksum = calc_checksum( (CHAR8 *)InPacket, sizeof( DEVICE_INFO ) );
                 num_return_bytes               = sizeof( DEVICE_INFO ) + 1; // Return information stored in packet.
                 break;
-
-
+#if 0
             case TMS_TDI_CMD:
                 // Output TMS and TDI values and pulse TCK.
                 TMS = OutPacket->tms;
@@ -769,7 +771,7 @@ BF_TEST_LOOP_1:
                     blink_counter -= ( MAX_BYTE_VAL - NUM_ACTIVITY_BLINKS );    // Do at least the minimum number of blinks.
                 }
                 break;
-
+#endif
             case TAP_SEQ_CMD:       // Output TMS & TDI values; get TDO value
                 num_return_bytes = 0;               // This command doesn't return any bytes by the default return routine.
 
@@ -808,6 +810,23 @@ BF_TEST_LOOP_1:
                 {
                     TDI = ( flags & TDI_VAL_MASK ) ? 1 : 0; // No TDI bits in packets, so set TDI to the static value indicated in the flag bit.
                 }
+
+                #if USE_MSSP
+                switch ( flags & ( PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK ) )
+                {
+                    case GET_TDO_MASK:
+                    case PUT_TDI_MASK:
+                        // These modes use the MSSP to send JTAG bits.
+                        TCK_TRIS          = 1; // Disable the TCK output so that the clock won't glitch when the MSSP is enabled.
+                        SSPCON1bits.SSPEN = 1; // Enable the MSSP.
+                        TCK_TRIS          = 0; // Enable the TCK output after the MSSP glitch is over.
+                        break;
+                    default:
+                        // The rest of the modes use bit-banging to send the JTAG bits.
+                        break;
+                }
+                #endif
+
                 // Process the first M-1 of M packets that are completely filled with TMS+TDI bits.
                 while ( num_bytes > OutPacketLength )
                 {
@@ -824,9 +843,6 @@ BF_TEST_LOOP_1:
                             #if USE_MSSP
                             {
                                 tdi_byte          = ( flags & TDI_VAL_MASK ) ? 0xFF : 0x00;
-                                TCK_TRIS          = 1; // Disable the TCK output so that the clock won't glitch when the MSSP is enabled.
-                                SSPCON1bits.SSPEN = 1;  // Enable the MSSP.
-                                TCK_TRIS          = 0; // Enable the TCK output after the MSSP glitch is over.
                                 buffer_cntr       = OutPacketLength - hdr_size;
                                 save_FSR0         = FSR0;
                                 save_FSR1         = FSR1;
@@ -857,7 +873,7 @@ PRI_TAP_LOOP_3:
                                 MOVFF TABLAT, POSTINC0          // Store the TDO byte into the buffer and inc. the pointer.
                                 _endasm
                                 TCK = 0;
-                                SSPCON1bits.SSPEN = 0;  // Turn off the MSSP.  The remaining bits are received manually.
+//                                SSPCON1bits.SSPEN = 0;  // Turn off the MSSP.  The remaining bits are received manually.
                                 FSR0              = save_FSR0;
                                 FSR1              = save_FSR1;
                             }
@@ -882,9 +898,6 @@ PRI_TAP_LOOP_3:
                         case PUT_TDI_MASK:  // Just output the TDI bits.
                             #if USE_MSSP
                             {
-                                TCK_TRIS          = 1; // Disable the TCK output so that the clock won't glitch when the MSSP is enabled.
-                                SSPCON1bits.SSPEN = 1;  // Enable the MSSP.
-                                TCK_TRIS          = 0; // Enable the TCK output after the MSSP glitch is over.
                                 buffer_cntr       = OutPacketLength - hdr_size;
                                 save_FSR0         = FSR0;
                                 save_FSR1         = FSR1;
@@ -911,7 +924,7 @@ PRI_TAP_LOOP_1:
                                 MOVFF SSPBUF, TBLPTRL           // Get the TDO byte just to clear the buffer-full flag (don't use TDO).
                                 _endasm
                                 TCK = 0;
-                                SSPCON1bits.SSPEN = 0;  // Turn off the MSSP.  The remaining bits are transmitted manually.
+//                                SSPCON1bits.SSPEN = 0;  // Turn off the MSSP.  The remaining bits are transmitted manually.
                                 FSR0              = save_FSR0;
                                 FSR1              = save_FSR1;
                             }
@@ -987,28 +1000,30 @@ PRI_TAP_LOOP_1:
                     // Send all the recorded TDO bits back in a complete packet.
                     if ( flags & GET_TDO_MASK )
                     {
-                        while ( USBHandleBusy( InHandle ) )
+                        // If received packets contain both TDI & TMS bits, return TDO packet is half-size (one TDO bit per TDI bit).
+                        if ( flags & PUT_TMS_MASK )
+                            InHandle[InIndex] = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, ( OutPacketLength - hdr_size ) / 2 );
+                        else
+                            InHandle[InIndex] = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, ( OutPacketLength - hdr_size ) );
+                        InIndex ^= 1;
+                        while ( USBHandleBusy( InHandle[InIndex] ) )
                         {
                             ;                             // Wait until USB transmitter is not busy.
                         }
-                        // If received packets contain both TDI & TMS bits, return TDO packet is half-size (one TDO bit per TDI bit).
-                        if ( flags & PUT_TMS_MASK )
-                            InHandle = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, ( OutPacketLength - hdr_size ) / 2 );
-                        else
-                            InHandle = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, ( OutPacketLength - hdr_size ) );
-                        InIndex ^= 1;
                         InPacket = &InBuffer[InIndex];
                     }
 
                     if ( flags & PUT_TDI_MASK )
                     {
+                        // This command packet has been handled, so get another.
+                        OutHandle[OutIndex] = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
+                        OutIndex ^= 1; // Point to next ping-pong buffer.
+
                         // Wait until the next packet of TMS & TDI bits arrives.
-                        while ( USBHandleBusy( OutHandle ) )
+                        while ( USBHandleBusy( OutHandle[OutIndex] ) )
                             ;
                         OutPacket       = &OutBuffer[OutIndex]; // Store pointer to just-received packet.
-                        OutPacketLength = USBHandleGetLength( OutHandle );    // Store length of received packet.
-                        OutIndex       ^= 1;
-                        OutHandle       = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
+                        OutPacketLength = USBHandleGetLength( OutHandle[OutIndex] );    // Store length of received packet.
                     }
 
                     tms_tdi  = (BYTE *)OutPacket;
@@ -1016,6 +1031,11 @@ PRI_TAP_LOOP_1:
 
                     hdr_size = 0;  // There is no command header in any packets following the first, just TDI & TMS bits.
                 }  // First M-1 TDI packets have been processed.
+
+                #if USE_MSSP
+                TCK = 0;
+                SSPCON1bits.SSPEN = 0;  // Turn off the MSSP.  The remaining bits are transmitted manually.
+                #endif
 
                 // If only one packet was received, this will subtract the number of command header bytes.
                 // Otherwise, the number of bytes is just the number in the last packet.
@@ -1135,16 +1155,10 @@ PRI_TAP_LOOP_1:
                 if ( flags & GET_TDO_MASK )
                 {
                     *tdo = tdo_byte;     // Store last few TDO bits into the outgoing packet.
-                    while ( USBHandleBusy( InHandle ) )
-                    {
-                        ;                             // Wait until USB transmitter is not busy.
-                    }
                     if ( flags & PUT_TMS_MASK )
-                        InHandle = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, num_bytes / 2 );
+                        num_return_bytes = num_bytes / 2;
                     else
-                        InHandle = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, num_bytes );
-                    InIndex ^= 1;
-                    InPacket = &InBuffer[InIndex];
+                        num_return_bytes = num_bytes;
                 }
 
                 // Blink the LED a few times after a long command completes.
@@ -1194,16 +1208,20 @@ PRI_TAP_LOOP_1:
                 break;
         } /* switch */
 
+        // This command packet has been handled, so get another.
+        OutHandle[OutIndex] = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
+        OutIndex ^= 1; // Point to next ping-pong buffer.
+
         // Packets of data are returned to the PC here.
         // The counter indicates the number of data bytes in the outgoing packet.
         if ( num_return_bytes != 0U )
         {
-            while ( USBHandleBusy( InHandle ) )
+            InHandle[InIndex] = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, num_return_bytes ); // Now send the packet.
+            InIndex ^= 1;
+            while ( USBHandleBusy( InHandle[InIndex] ) )
             {
                 ;                           // Wait until transmitter is not busy.
             }
-            InHandle = USBGenWrite( USBGEN_EP_NUM, (BYTE *)&InPacket, num_return_bytes ); // Now send the packet.
-            InIndex ^= 1;
             InPacket = &InBuffer[InIndex];
         }
     }
