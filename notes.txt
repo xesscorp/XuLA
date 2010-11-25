@@ -92,6 +92,14 @@ DESIGN IDEAS
    board width to 0.9".
 
 
+Add-ONS
+=========================================================================
+1. To insert XuLa into solderless breadboard, use Aries 20-0600-10
+   strip-line headers with coined contacts.
+2. New Age Enclosures utility box (Mouser#: 789-S3A-272008).  Use 2mm
+   connector for logic probes (Digikey#: 455-1787-ND, 455-1182-ND).
+
+
 
 ASSEMBLY & TEST PLAN
 =========================================================================
