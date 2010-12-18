@@ -28,8 +28,10 @@
 
 #include "autofiles\usbcfg.h"
 
-#define CLOCK_FREQ  48000000
+#define CLOCK_FREQ  48000000           // Clock frequency in Hz.
 #define MIPS        12                 // Number of processor instructions per microsecond.
+
+#define PRODUCTION_VERSION
 
 #define INPUT_PIN   1
 #define OUTPUT_PIN  0
@@ -59,6 +61,15 @@
 #define INIT_TDO()  TDO_TRIS = INPUT_PIN
 
 /** Serial flash disable *******************************************/
+#ifdef PRODUCTION_VERSION
+#define FLSHDSBL_PORT   B
+#define FLSHDSBL_BIT    7
+#define FLSHDSBL_MASK   ( 1 << FLSHDSBL_BIT )
+#define FLSHDSBL_TRIS   TRIS( B, 7 )
+#define FLSHDSBL        PORT( B, 7 )
+#define FLSHDSBL_ASM    PORT_ASM( B, 7 )
+#define INIT_FLSHDSBL() FLSHDSBL = 1, FLSHDSBL_TRIS = OUTPUT_PIN
+#else
 #define FLSHDSBL_PORT   B
 #define FLSHDSBL_BIT    5
 #define FLSHDSBL_MASK   ( 1 << FLSHDSBL_BIT )
@@ -66,6 +77,7 @@
 #define FLSHDSBL        PORT( B, 5 )
 #define FLSHDSBL_ASM    PORT_ASM( B, 5 )
 #define INIT_FLSHDSBL() FLSHDSBL = 1, FLSHDSBL_TRIS = OUTPUT_PIN
+#endif
 
 /** TCK *************************************************************/
 #define TCK_PORT    B
@@ -77,6 +89,15 @@
 #define INIT_TCK()  TCK = 0, TCK_TRIS = OUTPUT_PIN
 
 /** Firmware update jumper sense ************************************/
+#ifdef PRODUCTION_VERSION
+#define FMWB_PORT   B
+#define FMWB_BIT    5
+#define FMWB_MASK   ( 1 << FMWB_BIT )
+#define FMWB_TRIS   TRIS( B, 5 )
+#define FMWB        PORT( B, 5 )
+#define FMWB_ASM    PORT_ASM( B, 5 )
+#define INIT_FMWB() ANSELH = 0, INTCON2bits.NOT_RABPU = 0, LATCH( B, 5 ) = 1, FMWB_TRIS = INPUT_PIN
+#else
 #define FMWB_PORT   B
 #define FMWB_BIT    7
 #define FMWB_MASK   ( 1 << FMWB_BIT )
@@ -84,6 +105,7 @@
 #define FMWB        PORT( B, 7 )
 #define FMWB_ASM    PORT_ASM( B, 7 )
 #define INIT_FMWB() INTCON2bits.NOT_RABPU = 0, LATCH( B, 7 ) = 1, FMWB_TRIS = INPUT_PIN
+#endif
 
 /** FPGA DONE pin***************************************************/
 #define DONE_PORT   C
@@ -119,6 +141,7 @@
 #define FPGACLK         LATCH( C, 4 )
 #define FPGACLK_ON()    PSTRCON = 0b00000010
 #define FPGACLK_OFF()   PSTRCON = 0
+// Setup the FPGA clock by initializing the PWM B channel to output a 12 MHz clock.
 #define INIT_FPGACLK()  FPGACLK_OFF(), FPGACLK = 0, FPGACLK_TRIS = OUTPUT_PIN, \
                         T2CON = 0b00000100, PR2 = 0, CCPR1L = 0, CCP1CON = 0b00101100
 
@@ -152,12 +175,17 @@
 #define TDI_ASM         PORT_ASM( C, 7 )
 #define INIT_TDI()      TDI = 0, TDI_TRIS = OUTPUT_PIN
 
-/** Default configuration of I/O pins ******************************/
-#define DEFAULT_IO_CFG() \
-    SLRCON = 0, ANSEL = 0, ANSELH = 0,\
-    INIT_TDO(), INIT_TMS(), INIT_TCK(), INIT_TDI(),\
-    INIT_FLSHDSBL(), INIT_FMWB(),\
-    INIT_DONE(), INIT_PROGB(), INIT_FPGACLK(),\
-    INIT_LED()
+
+/** Some common uC bits ********************************************/
+// ALU carry bit.
+#define CARRY_POS       0
+#define CARRY_BIT_ASM   STATUS, CARRY_POS, ACCESS
+// MSSP buffer-full bit.
+#define MSSP_BF_POS     0
+#define MSSP_BF_ASM     WREG, MSSP_BF_POS, ACCESS
+
+// Converse of using ACCESS flag for destination register.
+#define TO_WREG         0
+
 
 #endif

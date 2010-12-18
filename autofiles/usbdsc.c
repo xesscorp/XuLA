@@ -172,6 +172,7 @@
 /** I N C L U D E S *************************************************/
 #include "system\typedefs.h"
 #include "system\usb\usb.h"
+#include "version.h"
 
 /** C O N S T A N T S ************************************************/
 #pragma romdata
@@ -188,7 +189,7 @@ rom USB_DEV_DSC device_dsc=
     EP0_BUFF_SIZE,          // Max packet size for EP0, see usbcfg.h
     0x04D8,                 // Vendor ID (Microchip)
     0xFF8C,                 // Product ID: XSUSB Board
-    0x0103,                 // Device release number in BCD format
+    USB_FMW_VERSION,        // Device release number in BCD format
     0x00,                   // Manufacturer string index
     0x00,                   // Product string index
     0x00,                   // Device serial number string index

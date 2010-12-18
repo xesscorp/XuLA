@@ -46,6 +46,7 @@
 #include "system\typedefs.h"
 #include "system\usb\usb.h"
 #include "io_cfg.h"
+#include "version.h"
 
 /** V A R I A B L E S ********************************************************/
 #pragma udata
@@ -214,6 +215,7 @@ void WriteEE(void) //TESTED: Passed
         StartWrite();
         while(EECON1_WR);       //Wait till WR bit is clear
     }//end for
+    EECON1 = 0x0;
 }//end WriteEE
 
 //WriteConfig is different from WriteProgMem b/c it can write a byte
@@ -252,66 +254,51 @@ void BootService(void)
         counter = 0;
         switch(dataPacket.CMD)
         {
-            case READ_VERSION:
+            case READ_VERSION_CMD:
                 ReadVersion();
                 counter=0x04;
                 break;
 
-            case READ_FLASH:
-            case READ_CONFIG:
+            case READ_FLASH_CMD:
+            case READ_CONFIG_CMD:
                 ReadProgMem();
                 counter+=0x05;
                 break;
 
-            case WRITE_FLASH:
+            case WRITE_FLASH_CMD:
                 WriteProgMem();
                 counter=0x01;
                 break;
 
-            case ERASE_FLASH:
+            case ERASE_FLASH_CMD:
                 EraseProgMem();
                 counter=0x01;
                 break;
 
-            case READ_EEDATA:
+            case READ_EEDATA_CMD:
                 ReadEE();
                 counter+=0x05;
                 break;
 
-            case WRITE_EEDATA:
+            case WRITE_EEDATA_CMD:
                 WriteEE();
                 counter=0x01;
                 break;
 
-            case WRITE_CONFIG:
+            case WRITE_CONFIG_CMD:
                 WriteConfig();
                 counter=0x01;
                 break;
             
-            case RESET:
+            case RESET_CMD:
                 //When resetting, make sure to drop the device off the bus
                 //for a period of time. Helps when the device is suspended.
                 UCONbits.USBEN = 0;
                 big_counter = 0;
                 while(--big_counter);
-                
                 Reset();
                 break;
             
-//            case UPDATE_LED:
-//            	counter = 0x01;
-//				if(dataPacket.led_num == 3)
-//				{
-//					mLED_3 = dataPacket.led_status;
-//					counter = 0x01;
-//				}//end if
-//				if(dataPacket.led_num == 4)
-//				{
-//					mLED_4 = dataPacket.led_status;
-//					counter = 0x01;
-//				}//end if
-//                break;
-                
             default:
                 break;
         }//end switch()

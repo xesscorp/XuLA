@@ -1,98 +1,40 @@
-# Manually-generated makefile.
+# MPLAB IDE generated this makefile for use with GNU make.
+# Project: XuLA_boot.mcp
+# Date: Sun Nov 14 10:13:18 2010
 
-TARGET = XuLA_boot
+AS = MPASMWIN.exe
+CC = mcc18.exe
+LD = mplink.exe
+AR = mplib.exe
+RM = rm
 
-TOOLDIR = \mcc18
-CC = $(TOOLDIR)\bin\mcc18
-CCFLAGS = -fe=$(TARGET).err -w1 -p=18f14k50 -I=$(TOOLDIR)\h -I=.  -scs -Opa-
-LINKER = $(TOOLDIR)\bin\mplink
-LINKERFLAGS = /w /x /l$(TOOLDIR)\lib $(TOOLDIR)\bin\LKR\18f14k50_g.lkr /u_CRUNTIME 
-MAKEHEX = $(TOOLDIR)\bin\mp2hex
-MAKEDEP = makedepend
-MAKEDEPFLAGS = -I$(TOOLDIR)/h -I. -o.o
+_output/XuLA_boot.cof : _output/main.o _output/usbmmap.o _output/usbdrv.o _output/usb9.o _output/usbdsc.o _output/usbctrltrf.o _output/boot.o _output/configbits.o
+	$(LD) /l"c:\mcc18\lib" "..\..\..\..\..\MCC18\bin\LKR\18f14k50_g.lkr" "_output\main.o" "_output\usbmmap.o" "_output\usbdrv.o" "_output\usb9.o" "_output\usbdsc.o" "_output\usbctrltrf.o" "_output\boot.o" "_output\configbits.o" /u_CRUNTIME /z__MPLAB_BUILD=1 /m"_output\XuLA_boot.map" /o"_output\XuLA_boot.cof"
 
-OBJECT =	main.o \
-			system/usb/usbmmap.o \
-			system/usb/usbdrv/usbdrv.o \
-			system/usb/usb9/usb9.o \
-			autofiles/usbdsc.o \
-			system/usb/usbctrltrf/usbctrltrf.o \
-			system/usb/class/boot/boot.o \
-			configbits.o
+_output/main.o : main.c ../../../../../MCC18/h/p18cxxx.h ../../../../../MCC18/h/p18f14k50.h system/typedefs.h system/usb/usb.h autofiles/usbcfg.h system/usb/usbdefs/usbdefs_std_dsc.h autofiles/usbdsc.h system/usb/class/boot/boot.h usbcmd.h system/usb/usbdefs/usbdefs_ep0_buff.h system/usb/usbmmap.h system/usb/usbdrv/usbdrv.h system/usb/usbctrltrf/usbctrltrf.h system/usb/usb9/usb9.h io_cfg.h eeprom_flags.h system/usb/usb_compile_time_validation.h
+	$(CC) -p=18F14K50 /i"C:\MCC18\h" -I"C:\xesscorp\PRODUCTS\USB_firmware\usb_boot" "main.c" -fo="_output\main.o" -scs -Opa-
 
-$(TARGET).hex : $(OBJECT)
-	$(LINKER) $(LINKERFLAGS) $(OBJECT) /m$(TARGET).map /o$(TARGET).cof
-	$(MAKEHEX) /r 0x0000-0x07FF $(TARGET).cof 
+_output/usbmmap.o : system/usb/usbmmap.c system/typedefs.h system/usb/usb.h autofiles/usbcfg.h system/usb/usbdefs/usbdefs_std_dsc.h autofiles/usbdsc.h system/usb/class/boot/boot.h usbcmd.h system/usb/usbdefs/usbdefs_ep0_buff.h system/usb/usbmmap.h system/usb/usbdrv/usbdrv.h system/usb/usbctrltrf/usbctrltrf.h system/usb/usb9/usb9.h
+	$(CC) -p=18F14K50 /i"C:\MCC18\h" -I"C:\xesscorp\PRODUCTS\USB_firmware\usb_boot" "system\usb\usbmmap.c" -fo="_output\usbmmap.o" -scs -Opa-
 
-..\usb_jtag\XuLA_jtag.hex :
-	$(MAKE) -C ../XuLA_jtag
+_output/usbdrv.o : system/usb/usbdrv/usbdrv.c ../../../../../MCC18/h/p18cxxx.h ../../../../../MCC18/h/p18f14k50.h system/typedefs.h system/usb/usb.h autofiles/usbcfg.h system/usb/usbdefs/usbdefs_std_dsc.h autofiles/usbdsc.h system/usb/class/boot/boot.h usbcmd.h system/usb/usbdefs/usbdefs_ep0_buff.h system/usb/usbmmap.h system/usb/usbdrv/usbdrv.h system/usb/usbctrltrf/usbctrltrf.h system/usb/usb9/usb9.h io_cfg.h
+	$(CC) -p=18F14K50 /i"C:\MCC18\h" -I"C:\xesscorp\PRODUCTS\USB_firmware\usb_boot" "system\usb\usbdrv\usbdrv.c" -fo="_output\usbdrv.o" -scs -Opa-
 
-total : $(TARGET).hex ..\usb_jtag\XuLA_jtag.hex
-	head --lines=-1 $(TARGET).hex > total.hex
-	cat ../usb_jtag/XuLA_jtag.hex >> total.hex
+_output/usb9.o : system/usb/usb9/usb9.c ../../../../../MCC18/h/p18cxxx.h ../../../../../MCC18/h/p18f14k50.h system/typedefs.h system/usb/usb.h autofiles/usbcfg.h system/usb/usbdefs/usbdefs_std_dsc.h autofiles/usbdsc.h system/usb/class/boot/boot.h usbcmd.h system/usb/usbdefs/usbdefs_ep0_buff.h system/usb/usbmmap.h system/usb/usbdrv/usbdrv.h system/usb/usbctrltrf/usbctrltrf.h system/usb/usb9/usb9.h io_cfg.h
+	$(CC) -p=18F14K50 /i"C:\MCC18\h" -I"C:\xesscorp\PRODUCTS\USB_firmware\usb_boot" "system\usb\usb9\usb9.c" -fo="_output\usb9.o" -scs -Opa-
 
-%.o : %.c
-	$(CC) $(CCFLAGS) $*.c -fo=$@
+_output/usbdsc.o : autofiles/usbdsc.c system/typedefs.h system/usb/usb.h autofiles/usbcfg.h system/usb/usbdefs/usbdefs_std_dsc.h autofiles/usbdsc.h system/usb/class/boot/boot.h usbcmd.h system/usb/usbdefs/usbdefs_ep0_buff.h system/usb/usbmmap.h system/usb/usbdrv/usbdrv.h system/usb/usbctrltrf/usbctrltrf.h system/usb/usb9/usb9.h
+	$(CC) -p=18F14K50 /i"C:\MCC18\h" -I"C:\xesscorp\PRODUCTS\USB_firmware\usb_boot" "autofiles\usbdsc.c" -fo="_output\usbdsc.o" -scs -Opa-
 
-depend :
-	$(MAKEDEP) $(MAKEDEPFLAGS) $(subst .o,.c,$(OBJECT))
+_output/usbctrltrf.o : system/usb/usbctrltrf/usbctrltrf.c ../../../../../MCC18/h/p18cxxx.h ../../../../../MCC18/h/p18f14k50.h system/typedefs.h system/usb/usb.h autofiles/usbcfg.h system/usb/usbdefs/usbdefs_std_dsc.h autofiles/usbdsc.h system/usb/class/boot/boot.h usbcmd.h system/usb/usbdefs/usbdefs_ep0_buff.h system/usb/usbmmap.h system/usb/usbdrv/usbdrv.h system/usb/usbctrltrf/usbctrltrf.h system/usb/usb9/usb9.h
+	$(CC) -p=18F14K50 /i"C:\MCC18\h" -I"C:\xesscorp\PRODUCTS\USB_firmware\usb_boot" "system\usb\usbctrltrf\usbctrltrf.c" -fo="_output\usbctrltrf.o" -scs -Opa-
 
-clean :
-	-rm $(OBJECT) *.cof *.cod *.hex *.lst *.map
+_output/boot.o : system/usb/class/boot/boot.c ../../../../../MCC18/h/p18cxxx.h ../../../../../MCC18/h/p18f14k50.h system/typedefs.h system/usb/usb.h autofiles/usbcfg.h system/usb/usbdefs/usbdefs_std_dsc.h autofiles/usbdsc.h system/usb/class/boot/boot.h usbcmd.h system/usb/usbdefs/usbdefs_ep0_buff.h system/usb/usbmmap.h system/usb/usbdrv/usbdrv.h system/usb/usbctrltrf/usbctrltrf.h system/usb/usb9/usb9.h io_cfg.h
+	$(CC) -p=18F14K50 /i"C:\MCC18\h" -I"C:\xesscorp\PRODUCTS\USB_firmware\usb_boot" "system\usb\class\boot\boot.c" -fo="_output\boot.o" -scs -Opa-
 
-# DO NOT DELETE
+_output/configbits.o : configbits.c
+	$(CC) -p=18F14K50 /i"C:\MCC18\h" -I"C:\xesscorp\PRODUCTS\USB_firmware\usb_boot" "configbits.c" -fo="_output\configbits.o" -scs -Opa-
 
-main.o: \mcc18/h/p18cxxx.h system\typedefs.h
-main.o: system\usb\usb_compile_time_validation.h system\usb\usb.h
-main.o: autofiles\usbcfg.h system\usb\usbdefs\usbdefs_std_dsc.h
-main.o: autofiles\usbdsc.h system\usb\class\boot\boot.h
-main.o: system\usb\usbdefs\usbdefs_ep0_buff.h system\usb\usbmmap.h
-main.o: system\usb\usbdrv\usbdrv.h system\usb\usbctrltrf\usbctrltrf.h
-main.o: system\usb\usb9\usb9.h
-system/usb/usbmmap.o: system\typedefs.h system\usb\usb.h autofiles\usbcfg.h
-system/usb/usbmmap.o: system\usb\usbdefs\usbdefs_std_dsc.h autofiles\usbdsc.h
-system/usb/usbmmap.o: system\usb\class\boot\boot.h
-system/usb/usbmmap.o: system\usb\usbdefs\usbdefs_ep0_buff.h
-system/usb/usbmmap.o: system\usb\usbmmap.h system\usb\usbdrv\usbdrv.h
-system/usb/usbmmap.o: system\usb\usbctrltrf\usbctrltrf.h
-system/usb/usbmmap.o: system\usb\usb9\usb9.h
-system/usb/usbdrv/usbdrv.o: \mcc18/h/p18cxxx.h system\typedefs.h
-system/usb/usbdrv/usbdrv.o: system\usb\usb.h autofiles\usbcfg.h
-system/usb/usbdrv/usbdrv.o: system\usb\usbdefs\usbdefs_std_dsc.h
-system/usb/usbdrv/usbdrv.o: autofiles\usbdsc.h system\usb\class\boot\boot.h
-system/usb/usbdrv/usbdrv.o: system\usb\usbdefs\usbdefs_ep0_buff.h
-system/usb/usbdrv/usbdrv.o: system\usb\usbmmap.h system\usb\usbdrv\usbdrv.h
-system/usb/usbdrv/usbdrv.o: system\usb\usbctrltrf\usbctrltrf.h
-system/usb/usbdrv/usbdrv.o: system\usb\usb9\usb9.h io_cfg.h
-system/usb/usb9/usb9.o: \mcc18/h/p18cxxx.h system\typedefs.h system\usb\usb.h
-system/usb/usb9/usb9.o: autofiles\usbcfg.h
-system/usb/usb9/usb9.o: system\usb\usbdefs\usbdefs_std_dsc.h
-system/usb/usb9/usb9.o: autofiles\usbdsc.h system\usb\class\boot\boot.h
-system/usb/usb9/usb9.o: system\usb\usbdefs\usbdefs_ep0_buff.h
-system/usb/usb9/usb9.o: system\usb\usbmmap.h system\usb\usbdrv\usbdrv.h
-system/usb/usb9/usb9.o: system\usb\usbctrltrf\usbctrltrf.h
-system/usb/usb9/usb9.o: system\usb\usb9\usb9.h io_cfg.h
-autofiles/usbdsc.o: system\typedefs.h system\usb\usb.h autofiles\usbcfg.h
-autofiles/usbdsc.o: system\usb\usbdefs\usbdefs_std_dsc.h autofiles\usbdsc.h
-autofiles/usbdsc.o: system\usb\class\boot\boot.h
-autofiles/usbdsc.o: system\usb\usbdefs\usbdefs_ep0_buff.h
-autofiles/usbdsc.o: system\usb\usbmmap.h system\usb\usbdrv\usbdrv.h
-autofiles/usbdsc.o: system\usb\usbctrltrf\usbctrltrf.h system\usb\usb9\usb9.h
-system/usb/usbctrltrf/usbctrltrf.o: \mcc18/h/p18cxxx.h system\typedefs.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usb.h autofiles\usbcfg.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usbdefs\usbdefs_std_dsc.h
-system/usb/usbctrltrf/usbctrltrf.o: autofiles\usbdsc.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\class\boot\boot.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usbdefs\usbdefs_ep0_buff.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usbmmap.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usbdrv\usbdrv.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usbctrltrf\usbctrltrf.h
-system/usb/usbctrltrf/usbctrltrf.o: system\usb\usb9\usb9.h
-system\usb\class\boot\boot.o: \mcc18/h/p18cxxx.h system\typedefs.h
-system\usb\class\boot\boot.o: system\usb\usb.h autofiles\usbcfg.h
-system\usb\class\boot\boot.o: system\usb\usbdefs\usbdefs_std_dsc.h
-system\usb\class\boot\boot.o: autofiles\usbdsc.h system\usb\class\boot\boot.h
-system\usb\class\boot\boot.o: system\usb\usbdefs\usbdefs_ep0_buff.h
-system\usb\class\boot\boot.o: system\usb\usbmmap.h system\usb\usbdrv\usbdrv.h
-system\usb\class\boot\boot.o: system\usb\usbctrltrf\usbctrltrf.h
-system\usb\class\boot\boot.o: system\usb\usb9\usb9.h io_cfg.h
+clean : 
+	$(RM) "_output\main.o" "_output\usbmmap.o" "_output\usbdrv.o" "_output\usb9.o" "_output\usbdsc.o" "_output\usbctrltrf.o" "_output\boot.o" "_output\configbits.o" "_output\XuLA_boot.cof" "_output\XuLA_boot.hex" "_output\XuLA_boot.cod" "_output\XuLA_boot.lst" "_output\XuLA_boot.map"
+

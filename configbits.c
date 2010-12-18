@@ -31,7 +31,7 @@
 #pragma config  IESO    = OFF       // Disable two-speed startup
 #pragma config  PWRTEN  = ON        // Enable delay upon power-up
 #pragma config  BOREN   = SBORDIS   // Hardware brown-out detection enabled
-#pragma config  BORV    = 30        // Brown-out level: 30=3.0V, 27=2.7V, 22=2.2V, 19=1.9V
+#pragma config  BORV    = 27        // Brown-out level: 30=3.0V, 27=2.7V, 22=2.2V, 19=1.9V
 #pragma config  WDTEN   = OFF       // Disable watch-dog timer
 #pragma config  WDTPS   = 32768     // Watch-dog timer postscaler
 #pragma config  MCLRE   = ON        // Enable MCLR pin

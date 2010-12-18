@@ -38,6 +38,7 @@
 
 /** I N C L U D E S **********************************************************/
 #include "system\typedefs.h"
+#include "usbcmd.h"
 
 /** D E F I N I T I O N S ****************************************************/
 /****** Compiler Specific Definitions *******************************/
@@ -93,8 +94,8 @@
 #endif
 
 /* Bootloader Version */
-#define MINOR_VERSION   0x00    //Bootloader Version 1.00
-#define MAJOR_VERSION   0x01
+//#define MINOR_VERSION   0x00    //Bootloader Version 1.00
+//#define MAJOR_VERSION   0x01
 
 /* State Machine */
 #define WAIT_FOR_CMD    0x00    //Wait for Command packet
@@ -166,19 +167,7 @@ typedef union _BOOT_DATA_PACKET
     byte _byte[BOOT_EP_SIZE];  //For Byte Access
     struct
     {
-        enum
-        {
-            READ_VERSION    = 0x00,
-            READ_FLASH      = 0x01,
-            WRITE_FLASH     = 0x02,
-            ERASE_FLASH     = 0x03,
-            READ_EEDATA     = 0x04,
-            WRITE_EEDATA    = 0x05,
-            READ_CONFIG     = 0x06,
-            WRITE_CONFIG    = 0x07,
-            UPDATE_LED      = 0x32,
-            RESET           = 0xFF
-        }CMD;
+        USBCMD CMD;     // Command for requested action
         byte len;
         union
         {
