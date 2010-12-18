@@ -1,46 +1,40 @@
-//*********************************************************************
-// Copyright (C) 2010 Dave Vanden Bout / XESS Corp. / www.xess.com
-//
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation; either version 2 of the License, or (at
-// your option) any later version.
-//
-// This program is distributed in the hope that it will be useful, but
-// WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-// General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License along
-// with this program; if not, write to the Free Software Foundation, Inc.,
-// 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
-//
-//====================================================================
-//
-// Module Description:
-//  Definitions of commands sent in USB packets to the XuLA board.
-//
-//********************************************************************
+/*----------------------------------------------------------------------------------
+	This program is free software; you can redistribute it and/or
+	modify it under the terms of the GNU General Public License
+	as published by the Free Software Foundation; either version 2
+	of the License, or (at your option) any later version.
 
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+	02111-1307, USA.
+
+	©2005-2010 - X Engineering Software Systems Corp.
+----------------------------------------------------------------------------------*/
 
 #ifndef USBCMD_H
 #define USBCMD_H
 
-
+/**
+Definitions of commands sent in USB packets.
+*/
 typedef enum
 {
-    /*
-       READ_VERSION         = 0x00,
-       READ_FLASH           = 0x01,
-       WRITE_FLASH          = 0x02,
-       ERASE_FLASH          = 0x03,
-       READ_EEDATA          = 0x04,
-       WRITE_EEDATA         = 0x05,
-       READ_CONFIG          = 0x06,
-       WRITE_CONFIG         = 0x07,
-     */
-    ID_BOARD               = 0x31,
-    UPDATE_LED             = 0x32,
+    READ_VERSION_CMD       = 0x00,  // Read the product version information.
+    READ_FLASH_CMD         = 0x01,  // Read from the device flash.
+    WRITE_FLASH_CMD        = 0x02,  // Write to the device flash.
+    ERASE_FLASH_CMD        = 0x03,  // Erase the device flash.
+    READ_EEDATA_CMD        = 0x04,  // Read from the device EEPROM.
+    WRITE_EEDATA_CMD       = 0x05,  // Write to the device EEPROM.
+    READ_CONFIG_CMD        = 0x06,  // Read from the device configuration memory.
+    WRITE_CONFIG_CMD       = 0x07,  // Write to the device configuration memory.
+    ID_BOARD_CMD           = 0x31,  // Flash the device LED to identify which device is being communicated with.
+    UPDATE_LED_CMD         = 0x32,  // Change the state of the device LED.
     INFO_CMD               = 0x40,  // Get information about the USB interface.
     SENSE_INVERTERS_CMD    = 0x41,  // Sense inverters on TCK and TDO pins of the secondary JTAG port.
     TMS_TDI_CMD            = 0x42,  // Send a single TMS and TDI bit.
@@ -57,7 +51,8 @@ typedef enum
     ENABLE_RETURN_CMD      = 0x4d,  // Enable return of info in response to a command.
     DISABLE_RETURN_CMD     = 0x4e,  // Disable return of info in response to a command.
     TAP_SEQ_CMD            = 0x4f,  // Send multiple TMS & TDI bits while receiving multiple TDO bits.
-    RESET                  = 0xff
+    FLASH_ONOFF_CMD        = 0x50,  // Enable/disable the FPGA configuration flash.
+    RESET_CMD              = 0xff   // Cause a power-on reset.
 } USBCMD;
 
 #endif

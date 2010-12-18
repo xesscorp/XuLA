@@ -47,6 +47,8 @@ file_019=.
 file_020=.
 file_021=.
 file_022=.
+file_023=.
+file_024=.
 [GENERATED_FILES]
 file_000=no
 file_001=no
@@ -71,6 +73,8 @@ file_019=no
 file_020=no
 file_021=no
 file_022=no
+file_023=no
+file_024=no
 [OTHER_FILES]
 file_000=no
 file_001=no
@@ -95,6 +99,8 @@ file_019=no
 file_020=no
 file_021=no
 file_022=no
+file_023=no
+file_024=no
 [FILE_INFO]
 file_000=main.c
 file_001=configbits.c
@@ -118,7 +124,9 @@ file_018=C:\Microchip Solutions v2010-08-04\Microchip\Include\USB\usb.h
 file_019=C:\Microchip Solutions v2010-08-04\Microchip\Include\GenericTypeDefs.h
 file_020=utils.h
 file_021=blinker.h
-file_022=18f14k50_g.lkr
+file_022=C:\xesscorp\PRODUCTS\XuLA\firmware\XuLA_boot\eeprom_flags.h
+file_023=version.h
+file_024=18f14k50_g.lkr
 [SUITE_INFO]
 suite_guid={5B7D72DD-9861-47BD-9F60-2BE967BF8416}
 suite_state=

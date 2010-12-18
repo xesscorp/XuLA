@@ -27,8 +27,10 @@
 #include "USB/usb_function_generic.h"
 #include "HardwareProfile.h"
 #include "GenericTypeDefs.h"
+#include "version.h"
 #include "user.h"
 #include "usbcmd.h"
+#include "eeprom_flags.h"
 #include "utils.h"
 #include "blinker.h"
 
@@ -39,6 +41,8 @@ typedef struct DEVICE_INFO
     CHAR8 version_id[2];
     struct
     {
+        // description string is size of max. USB packet minus storage for
+        // product ID, device ID, checksum and command.
         CHAR8 str[USBGEN_EP_SIZE - 2 - 2 - 1 - 1];
     }     desc;
     CHAR8 checksum;
@@ -83,6 +87,27 @@ typedef union DATA_PACKET
         DWORD  num_bits;
         BYTE   flags;
     };
+    struct // FLASH_ONOFF_CMD
+    {
+        USBCMD cmd;
+        BYTE   flash_on;
+    };
+    struct // EEPROM read/write structure
+    {
+        USBCMD cmd;
+        BYTE len;
+        union
+        {
+            rom far char *pAdr;             //Address Pointer
+            struct
+            {
+                BYTE low;                   //Little-indian order
+                BYTE high;
+                BYTE upper;
+            };
+        }ADR;
+        BYTE data[USBGEN_EP_SIZE - 5];
+    };
 } DATA_PACKET;
 
 // Definitions for TAP_SEQ_CMD
@@ -108,8 +133,8 @@ typedef union DATA_PACKET
 static const rom DEVICE_INFO device_info
     = {
     0x00, 0x02,         // Product ID.
-    0x01, 0x01,         // Version.
-    { "XuLA FMW:01.01" }, // Description string.
+    MAJOR_VERSION, MINOR_VERSION,         // Version.
+    { "XuLA" },         // Description string.
     0x00                // Checksum (filled in later).
     }; // Change version in usb_descriptors.c as well!!
 
@@ -158,8 +183,86 @@ static DATA_PACKET OutBuffer[2];    // Ping-pong buffers in USB RAM for receivin
 
 #pragma code
 
+BYTE ReadEeprom(BYTE address)
+{
+    EECON1 = 0x00;
+    EEADR = address;
+    EECON1bits.RD = 1;
+    return EEDATA;
+}
+
+void WriteEeprom(BYTE address, BYTE data)
+{
+    EEADR = address;
+    EEDATA = data;
+    EECON1 = 0b00000100;    //Setup writes: EEPGD=0,WREN=1
+    EECON2 = 0x55;
+    EECON2 = 0xAA;
+    EECON1bits.WR = 1;
+    while(EECON1bits.WR);       //Wait till WR bit is clear
+}
+
+void ProcessEepromFlags(void)
+{
+    if(ReadEeprom(FLASH_ENABLE_FLAG_ADDR) == ENABLE_FLASH)
+    {
+        // Enable flash access by FPGA by releasing flash chip-enable.
+        FLSHDSBL_TRIS = INPUT_PIN; // The uC no longer holds the flash chip-enable high.
+    }
+    else
+    {
+        // Disable flash by pulling flash chip-enable high.
+        FLSHDSBL = 1;
+        FLSHDSBL_TRIS = OUTPUT_PIN;
+    }
+
+    if(ReadEeprom(JTAG_DISABLE_FLAG_ADDR) == DISABLE_JTAG)
+    {
+        // Disable uC from driving FPGA JTAG pins so external JTAG cable can do it.
+        TCK_TRIS = INPUT_PIN;
+        TMS_TRIS = INPUT_PIN;
+        TDI_TRIS = INPUT_PIN;
+        TDO_TRIS = INPUT_PIN;
+    }
+    else
+    {
+        // Enable uC drivers of FPGA JTAG pins.
+        TCK = 0;    // Make sure TCK starts at low level.
+        TCK_TRIS = OUTPUT_PIN;
+        TMS_TRIS = OUTPUT_PIN;
+        TDI_TRIS = OUTPUT_PIN;
+        TDO_TRIS = INPUT_PIN;
+    }   
+}
+
 void UserInit( void )
 {
+    DWORD config_delay;
+
+    // Initialize the I/O pins.
+    // Enable high slew-rate for the I/O pins.
+    SLRCON = 0;
+    // Disable analog functions of the I/O pins.
+    ANSEL = 0;
+    ANSELH = 0;
+    // Initialize the JTAG pins to/from the FPGA.
+    INIT_TCK();
+    INIT_TMS();
+    INIT_TDI();
+    INIT_TDO();
+    // Initialize disable pin for FPGA config. flash.
+    INIT_FLSHDSBL();
+    // Initialize the analog I/O pins.
+    INIT_ANIO0();
+    INIT_ANIO1();
+    // Initialize the FPGA configuration pins.
+    INIT_DONE();
+    INIT_PROGB();
+    // Initialize the clock to the FPGA.
+    INIT_FPGACLK();
+    // Initialize the status LED.
+    INIT_LED();
+
     #if defined( USE_USB_BUS_SENSE_IO )
     tris_usb_bus_sense = INPUT_PIN;
     #endif
@@ -168,11 +271,10 @@ void UserInit( void )
     tris_self_power    = INPUT_PIN;
     #endif
 
-    DEFAULT_IO_CFG();           // Initialize all the I/O pins.
+    InitBlinker();  // Initialize LED status blinker.
 
-    InitBlinker();
-
-    // Setup the Master Synchronous Serial Port in SPI mode.
+    #if USE_MSSP
+    // Setup the Master Synchronous Serial Port in SPI mode for driving the FPGA JTAG pins.
     PIE1bits.SSPIE    = 0;      // Disable SSP interrupts.
     SSPCON1bits.SSPEN = 0;      // Disable the SSP until it's needed.
     SSPSTATbits.SMP   = 0;      // Sample TDO on the rising clock edge.  (TDO changes on the falling clock edge.)
@@ -182,15 +284,35 @@ void UserInit( void )
     SSPCON1bits.SSPM1 = 0;      //    MUST STAY AT THIS SETTING BECAUSE WE ASSUME BYTE TRANSMISSION
     SSPCON1bits.SSPM2 = 0;      //    TAKES 8 INSTRUCTION CYCLES IN THE TDI, TDO LOOPS BELOW!!!
     SSPCON1bits.SSPM3 = 0;
+    #endif
 
+    // Initialize interrupts.
     RCONbits.IPEN     = 1;      // Enable prioritized interrupts.
     INTERRUPTS_ON();            // Enable high and low-priority interrupts.
 
-    PROGB = 1;                  // Enable configuration of the FPGA.
+    // Try to configure the FPGA from the serial flash.
+    PROGB = 0;                  // Erase the FPGA.
+    // Keep the flash disabled for 1000 us = 1ms.
+    FLSHDSBL = 1;
+    FLSHDSBL_TRIS = OUTPUT_PIN;
+    insert_delay(1000);
+    FLSHDSBL_TRIS = INPUT_PIN;  // Give FPGA control of the serial flash chip-select.
+    PROGB = 1;                  // Release FPGA and let it try to configure from the serial flash.
+    // Now wait for a while and see if the FPGA configuration done pin goes high.
+    for(config_delay=0L; config_delay<500000L; config_delay++)
+    {
+        if(DONE == 1)
+            break;
+    }
 
-    FPGACLK_ON();               // Give the FPGA a clock.
+    FLSHDSBL_TRIS = OUTPUT_PIN; // Any FPGA configuration is done, so disable the flash.
 
-    INTCON2bits.NOT_RABPU = 1;
+    if(DONE == 0)
+        PROGB = 0;              // FPGA didn't configure, so erase it and hold it in unconfigured state.
+
+    ProcessEepromFlags();       // Process the non-volatile flags stored in EEPROM.
+
+    FPGACLK_ON();               // Give the FPGA a clock whether it is configured or not.
 }
 
 
@@ -254,7 +376,7 @@ void ServiceRequests( void )
 
         switch ( cmd )  // Process the contents of the packet based on the command byte.
         {
-            case ID_BOARD:
+            case ID_BOARD_CMD:
                 // Blink the LED in order to identify the board.
                 blink_counter                  = 50;
                 InPacket->cmd                  = cmd;
@@ -268,7 +390,7 @@ void ServiceRequests( void )
                 InPacket->device_info.checksum = calc_checksum( (CHAR8 *)InPacket, sizeof( DEVICE_INFO ) );
                 num_return_bytes               = sizeof( DEVICE_INFO ) + 1; // Return information stored in packet.
                 break;
-#if 0
+
             case TMS_TDI_CMD:
                 // Output TMS and TDI values and pulse TCK.
                 TMS = OutPacket->tms;
@@ -280,6 +402,7 @@ void ServiceRequests( void )
 
             case TMS_TDI_TDO_CMD:
                 // Sample TDO, output TMS and TDI values, pulse TCK, and return TDO value.
+                InPacket->cmd    = cmd;
                 InPacket->tdo    = TDO; // Place TDO pin value into the command packet.
                 TMS              = OutPacket->tms;
                 TDI              = OutPacket->tdi;
@@ -305,33 +428,46 @@ void ServiceRequests( void )
                 TCK           = 0; // Initialize TCK (should have been low already).
                 TMS           = 0; // Initialize TMS to keep TAP FSM in Shift-IR or Shift-DR state).
 
-                if ( USE_MSSP && ( num_bits > 8U ) )
+                #if USE_MSSP
+                if ( num_bits > 8U )
                 {
-                    TCK_TRIS          = 1; // Disable the TCK output so that the clock won't glitch when the MSSP is enabled.
-                    SSPCON1bits.SSPEN = 1;  // Enable the MSSP.
-                    TCK_TRIS          = 0; // Enable the TCK output after the MSSP glitch is over.
+                    TCK_TRIS          = INPUT_PIN; // Disable the TCK output so that the clock won't glitch when the MSSP is enabled.
+                    SSPCON1bits.SSPEN = 1; // Enable the MSSP.
+                    TCK_TRIS          = OUTPUT_PIN; // Enable the TCK output after the MSSP glitch is over.
                 }
+                #endif
+
+                if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDI_CMD ) )
+                {
+                    // Wait until a completely filled packet of TDI bits arrives.
+                    // This command packet has been handled, so get another.
+                    OutHandle[OutIndex] = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
+                    OutIndex ^= 1; // Point to next ping-pong buffer.
+
+                    // Wait until the next packet of TMS & TDI bits arrives.
+                    while ( USBHandleBusy( OutHandle[OutIndex] ) )
+                        ;
+                    OutPacketLength = USBHandleGetLength( OutHandle[OutIndex] );    // Store length of received packet.
+                    OutPacket       = &OutBuffer[OutIndex]; // Store pointer to just-received packet.
+                    tdi             = (BYTE *)OutPacket; // Init pointer to the just-received TDI data.
+                }
+                else if( cmd = TDO_CMD )
+                {
+                    // When we are not receiving any further TDI packets and are just returning packets of TDO bits,
+                    // then set the received packet length to the maximum size so the following 'while' loop will
+                    // work even though no new packets are arriving.  This is a sloppy fix, but it's the easiest
+                    // way to make the code work.
+                    OutPacketLength = USBGEN_EP_SIZE;
+                }
+                tdo         = (BYTE *)InPacket; // TDO data will be written here.
 
                 // Process the first M-1 of M packets that are completely filled with TDI and/or TDO bits.
-                for ( ; num_bytes > USBGEN_EP_SIZE; num_bytes -= USBGEN_EP_SIZE )
+                while ( num_bytes > OutPacketLength )
                 {
-                    if ( blink_counter == 0U )
-                    {
-                        blink_counter = MAX_BYTE_VAL;   // Blink LED continuously during the long duration of this command.
-                    }
-                    if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDI_CMD ) )
-                    {
-                        // Wait until a completely filled packet of TDI bits arrives.
-                        while ( USBHandleBusy( OutHandle ) )
-                            ;
-                        OutPacket       = &OutBuffer[OutIndex]; // Store pointer to just-received packet.
-                        OutPacketLength = USBHandleGetLength( OutHandle );    // Store length of received packet.
-                        OutIndex       ^= 1;
-                        OutHandle       = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
+                    num_bytes -= OutPacketLength;
 
-                        tdi             = (BYTE *)OutPacket; // Init pointer to the just-received TDI data.
-                    }
-                    tdo         = (BYTE *)InPacket; // TDO data will be written here.
+                    if ( blink_counter == 0U )
+                        blink_counter = MAX_BYTE_VAL;   // Blink LED continuously during the long duration of this command.
 
                     // Process the bytes in the TDI packet.
                     buffer_cntr = OutPacketLength;
@@ -655,31 +791,32 @@ PRI_TDO_LOOP_0:
                     // send all the recorded TDO bits back in a complete packet.
                     if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDO_CMD ) )
                     {
-                        while ( USBHandleBusy( InHandle ) )
-                        {
-                            ;                             // Wait until USB transmitter is not busy.
-                        }
-                        InHandle = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, ( OutPacketLength ) );
+                        InHandle[InIndex] = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, OutPacketLength );
                         InIndex ^= 1;
+                        while ( USBHandleBusy( InHandle[InIndex] ) )
+                            ;                             // Wait until USB transmitter is not busy.
                         InPacket = &InBuffer[InIndex];
+                        tdo      = (BYTE *)InPacket; // TDO data will be written here.
                     }
+    
+                    if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDI_CMD ) )
+                    {
+                        // Wait until a completely filled packet of TDI bits arrives.
+                        // This command packet has been handled, so get another.
+                        OutHandle[OutIndex] = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
+                        OutIndex ^= 1; // Point to next ping-pong buffer.
+    
+                        // Wait until the next packet of TMS & TDI bits arrives.
+                        while ( USBHandleBusy( OutHandle[OutIndex] ) )
+                            ;
+                        OutPacketLength = USBHandleGetLength( OutHandle[OutIndex] );    // Store length of received packet.
+                        OutPacket       = &OutBuffer[OutIndex]; // Store pointer to just-received packet.
+                        tdi             = (BYTE *)OutPacket; // Init pointer to the just-received TDI data.
+                    }
+
                 }  // First M-1 TDI packets have been processed.
 
                 num_final_bytes = num_bytes;
-
-                if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDI_CMD ) )
-                {
-                    // Now wait until the final TDI packet arrives.
-                    while ( USBHandleBusy( OutHandle ) )
-                        ;
-                    OutPacket       = &OutBuffer[OutIndex];     // Store pointer to just-received packet.
-                    OutPacketLength = USBHandleGetLength( OutHandle );        // Store length of received packet.
-                    OutIndex       ^= 1;
-                    OutHandle       = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
-
-                    tdi             = (BYTE *)OutPacket; // Init pointer to the just-received TDI data.
-                }
-                tdo = (BYTE *)InPacket;
 
                 // Process all except the last byte in the final packet of TDI bits.
                 for ( buffer_cntr = num_final_bytes; buffer_cntr > 1U; buffer_cntr-- )
@@ -736,45 +873,28 @@ BF_TEST_LOOP_1:
                 for ( bit_mask = 0x80; bit_cntr > 0U; bit_cntr--, bit_mask >>= 1 )
                 {
                     if ( bit_cntr == 1U )
-                    {
                         TMS = 1;    // Raise TMS to exit Shift-IR or Shift-DR state on the final TDI bit.
-                    }
                     if ( TDO )
                         tdo_byte |= bit_mask;
                     TDI = tdi_byte & bit_mask ? 1 : 0;
                     TCK = 1;
                     TCK = 0;
                 } // The final bits in the last TDI byte have been processed.
-                if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDO_CMD ) )
-                    *tdo = reverse_bits[tdo_byte];
+
                 if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDO_CMD ) )
                 {
-                    // Send back the final packet of TDO bits.
-                    while ( USBHandleBusy( InHandle ) )
-                    {
-                        ;                                 // Wait until USB transmitter is not busy.
-                    }
-                    InHandle = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, ( OutPacketLength ) );
-                    InIndex ^= 1;
-                    InPacket = &InBuffer[InIndex];
+                    *tdo = reverse_bits[tdo_byte]; // Store last few TDO bits into the outgoing packet.
+                    num_return_bytes = num_bytes;
                 }
-
-                num_return_bytes = 0;   // Any packets with TDO data have already been sent.
 
                 // Blink the LED a few times after a long command completes.
                 if ( blink_counter < MAX_BYTE_VAL - NUM_ACTIVITY_BLINKS )
-                {
                     blink_counter = 0;  // Already done enough LED blinks.
-                }
                 else
-                {
                     blink_counter -= ( MAX_BYTE_VAL - NUM_ACTIVITY_BLINKS );    // Do at least the minimum number of blinks.
-                }
                 break;
-#endif
-            case TAP_SEQ_CMD:       // Output TMS & TDI values; get TDO value
-                num_return_bytes = 0;               // This command doesn't return any bytes by the default return routine.
 
+            case TAP_SEQ_CMD:       // Output TMS & TDI values; get TDO value
                 blink_counter    = MAX_BYTE_VAL;               // Blink LED continuously during the (long) duration of this command.
 
                 // The first packet received contains the TAP_SEQ_CMD command and the number
@@ -783,9 +903,8 @@ BF_TEST_LOOP_1:
 
                 // Exit if no TDI bits will follow (this is probably an error...).
                 if ( num_bits == 0U )
-                {
                     break; // Get flags from the first packet that indicate how TMS and TDO bits are handled.
-                }
+
                 flags      = OutPacket->flags;
 
                 hdr_size   = TAP_SEQ_CMD_HDR_LEN;                     // Size of the command header in the first packet.
@@ -795,9 +914,7 @@ BF_TEST_LOOP_1:
                 // Total number of header+TMS+TDI bytes in all the packets for this command.
                 num_bytes  = (DWORD)( ( num_bits + 7 ) / 8 );
                 if ( flags & PUT_TMS_MASK )
-                {
                     num_bytes *= 2; // Twice the number of bytes if TMS bits are also being sent.
-                }
                 num_bytes += hdr_size;
 
                 // Initialize TCK, TMS and TDI levels.
@@ -817,9 +934,9 @@ BF_TEST_LOOP_1:
                     case GET_TDO_MASK:
                     case PUT_TDI_MASK:
                         // These modes use the MSSP to send JTAG bits.
-                        TCK_TRIS          = 1; // Disable the TCK output so that the clock won't glitch when the MSSP is enabled.
+                        TCK_TRIS          = INPUT_PIN; // Disable the TCK output so that the clock won't glitch when the MSSP is enabled.
                         SSPCON1bits.SSPEN = 1; // Enable the MSSP.
-                        TCK_TRIS          = 0; // Enable the TCK output after the MSSP glitch is over.
+                        TCK_TRIS          = OUTPUT_PIN; // Enable the TCK output after the MSSP glitch is over.
                         break;
                     default:
                         // The rest of the modes use bit-banging to send the JTAG bits.
@@ -1007,9 +1124,7 @@ PRI_TAP_LOOP_1:
                             InHandle[InIndex] = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, ( OutPacketLength - hdr_size ) );
                         InIndex ^= 1;
                         while ( USBHandleBusy( InHandle[InIndex] ) )
-                        {
                             ;                             // Wait until USB transmitter is not busy.
-                        }
                         InPacket = &InBuffer[InIndex];
                     }
 
@@ -1199,7 +1314,47 @@ PRI_TAP_LOOP_1:
                 num_return_bytes = 0;           // Don't return any acknowledgement.
                 break;
 
-            case RESET:
+            case FLASH_ONOFF_CMD:
+                if(OutPacket->flash_on)
+                {
+                    // The uC releases its hold on the flash chip-select so the FPGA can control it.
+                    FLSHDSBL_TRIS = INPUT_PIN;
+                }
+                else
+                {
+                    // The uC grabs the flash chip-select and forces it high to disable the flash.
+                    FLSHDSBL = 1;
+                    FLSHDSBL_TRIS = OUTPUT_PIN;
+                }
+                num_return_bytes = 2;           // Return the entire command as an acknowledgement.
+                break;
+
+            case READ_EEDATA_CMD:
+                InPacket->cmd = OutPacket->cmd;
+                for(buffer_cntr=0; buffer_cntr < OutPacket->len; buffer_cntr++)
+                {
+                    InPacket->data[buffer_cntr] = ReadEeprom((BYTE)OutPacket->ADR.pAdr + buffer_cntr);
+                }
+                num_return_bytes = buffer_cntr + 5;
+                break;
+
+            case WRITE_EEDATA_CMD:
+                InPacket->cmd = OutPacket->cmd;
+                for(buffer_cntr=0; buffer_cntr < OutPacket->len; buffer_cntr++)
+                {
+                    WriteEeprom((BYTE)OutPacket->ADR.pAdr + buffer_cntr, OutPacket->data[buffer_cntr]);
+                }
+                ProcessEepromFlags();   // Update uC behavior based on any new EEPROM flag settings.
+                num_return_bytes = 1;
+                break;
+
+            case RESET_CMD:
+                // When resetting, make sure to drop the device off the bus
+                // for a period of time. Helps when the device is suspended.
+                UCONbits.USBEN = 0;
+                lcntr = 0xFFFF;
+                for(lcntr = 0xFFFF; lcntr; lcntr--)
+                    ;
                 Reset();
                 break;
 
