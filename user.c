@@ -81,10 +81,10 @@ typedef union DATA_PACKET
         USBCMD   cmd;
         unsigned prog : 1;
     };
-    struct // TAP_SEQ_CMD structure
+    struct // JTAG_CMD structure
     {
         USBCMD cmd;
-        DWORD  num_bits;
+        DWORD  num_clks;
         BYTE   flags;
     };
     struct // FLASH_ONOFF_CMD
@@ -101,7 +101,7 @@ typedef union DATA_PACKET
             rom far char *pAdr;             //Address Pointer
             struct
             {
-                BYTE low;                   //Little-indian order
+                BYTE low;                   //Little-endian order
                 BYTE high;
                 BYTE upper;
             };
@@ -110,16 +110,15 @@ typedef union DATA_PACKET
     };
 } DATA_PACKET;
 
-// Definitions for TAP_SEQ_CMD
-#define TAP_SEQ_CMD_HDR_LEN 6
+// Definitions for JTAG_CMD
+#define JTAG_CMD_HDR_LEN 6
 
-// Flag bits for TAP_SEQ_CMD
+// Flag bits for JTAG_CMD
 #define GET_TDO_MASK 0x01                       // Set if gathering TDO bits.
 #define PUT_TMS_MASK 0x02                       // Set if TMS bits are included in the packets.
 #define TMS_VAL_MASK 0x04                       // Static value for TMS if PUT_TMS_MASK is cleared.
 #define PUT_TDI_MASK 0x08                       // Set if TDI bits are included in the packets.
 #define TDI_VAL_MASK 0x10                       // Static value for TDI if PUT_TDI_MASK is cleared.
-#define DO_MULTIPLE_PACKETS_MASK 0x80           // Set if command extends over multiple USB packets.
 
 #define MIPS 12                         // Number of processor instructions per microsecond.
 #define MAX_BYTE_VAL 0xFF               // Maximum value that can be stored in a byte.
@@ -223,6 +222,8 @@ void ProcessEepromFlags(void)
         TMS_TRIS = INPUT_PIN;
         TDI_TRIS = INPUT_PIN;
         TDO_TRIS = INPUT_PIN;
+        // Release PROGB so external JTAG programmer can program the FPGA.
+        PROGB    = 1;
     }
     else
     {
@@ -232,6 +233,10 @@ void ProcessEepromFlags(void)
         TMS_TRIS = OUTPUT_PIN;
         TDI_TRIS = OUTPUT_PIN;
         TDO_TRIS = INPUT_PIN;
+        // If uC is in charge of FPGA programming, then pull PROGB low is flash didn't config FPGA.
+        if(DONE == 0)
+            PROGB = 0; // FPGA didn't configure, so erase it and hold it in unconfigured state.
+
     }   
 }
 
@@ -307,9 +312,7 @@ void UserInit( void )
 
     FLSHDSBL_TRIS = OUTPUT_PIN; // Any FPGA configuration is done, so disable the flash.
 
-    if(DONE == 0)
-        PROGB = 0;              // FPGA didn't configure, so erase it and hold it in unconfigured state.
-
+    // Process EEPROM flags only AFTER FPGA tries to config from flash.
     ProcessEepromFlags();       // Process the non-volatile flags stored in EEPROM.
 
     FPGACLK_ON();               // Give the FPGA a clock whether it is configured or not.
@@ -351,12 +354,9 @@ void ServiceRequests( void )
     BYTE *tdi;                      // Pointer to the buffer of received TDI bits.
     BYTE *tdo;                      // Pointer to the buffer for returning TDO bits.
     BYTE *tms_tdi;                  // Pointer to the buffer of received TDI & TMS bits.
-    DWORD num_bits;                 // # of total bits in stream of bits sent to and from the JTAG device.
-    BYTE num_final_bits;            // # of bits in the final packet of TDI/TDO bits.
-    DWORD num_bytes;                // # of total bytes in the stream of TDI/TDO bits.
-    BYTE num_final_bytes;           // # of bytes in the final packet of TDI/TDO bits.
-    BYTE hdr_size;                  // # of bytes at beginning of TAP_SEQ_CMD packets.
-    BYTE flags;                     // local storage for TAP_SEQ_CMD flags.
+    DWORD num_clks;                 // # of TCK pulses to send TMS/TDI bits to JTAG device.
+    DWORD num_bytes;                // # of total bytes in the stream of TMS/TDI/TDO bits.
+    BYTE flags;                     // local storage for JTAG_CMD flags.
     BYTE bit_mask;                  // Mask to select bit from a byte.
     BYTE bit_cntr;                  // Counter within a byte of bits.
     BYTE tms_byte, tdi_byte, tdo_byte;      // Temporary bytes of TMS, TDI and TDO bits.
@@ -418,18 +418,18 @@ void ServiceRequests( void )
 
                 // The first packet received contains the TDI_CMD command and the number
                 // of TDI bits that will follow in succeeding packets.
-                num_bits      = OutPacket->num_bits;
+                num_clks      = OutPacket->num_clks;
 
                 // Exit if no TDI bits will follow (this is probably an error...).
-                if ( num_bits == 0U )
+                if ( num_clks == 0U )
                     break;
-                num_bytes     = ( num_bits + 7 ) / 8; // Total number of bytes in all the packets that will follow.
+                num_bytes     = ( num_clks + 7 ) / 8; // Total number of bytes in all the packets that will follow.
 
                 TCK           = 0; // Initialize TCK (should have been low already).
                 TMS           = 0; // Initialize TMS to keep TAP FSM in Shift-IR or Shift-DR state).
 
                 #if USE_MSSP
-                if ( num_bits > 8U )
+                if ( num_clks > 8U )
                 {
                     TCK_TRIS          = INPUT_PIN; // Disable the TCK output so that the clock won't glitch when the MSSP is enabled.
                     SSPCON1bits.SSPEN = 1; // Enable the MSSP.
@@ -816,10 +816,8 @@ PRI_TDO_LOOP_0:
 
                 }  // First M-1 TDI packets have been processed.
 
-                num_final_bytes = num_bytes;
-
                 // Process all except the last byte in the final packet of TDI bits.
-                for ( buffer_cntr = num_final_bytes; buffer_cntr > 1U; buffer_cntr-- )
+                for ( buffer_cntr = num_bytes; buffer_cntr > 1U; buffer_cntr-- )
                 {
                     // Read a byte from the packet, re-order the bits (if necessary), and transmit it
                     // through the SSP starting at the most-significant bit.
@@ -861,8 +859,8 @@ BF_TEST_LOOP_1:
                 #endif
 
                 // Compute the number of TDI bits in the final byte of the final packet.
-                // (This computation only works because num_bits != 0.)
-                bit_cntr          = num_bits & 0x7;
+                // (This computation only works because num_clks != 0.)
+                bit_cntr          = num_clks & 0x7;
                 if ( bit_cntr == 0U )
                     bit_cntr = 8U;
                 if ( ( cmd == TDI_TDO_CMD ) || ( cmd == TDI_CMD ) )
@@ -894,28 +892,18 @@ BF_TEST_LOOP_1:
                     blink_counter -= ( MAX_BYTE_VAL - NUM_ACTIVITY_BLINKS );    // Do at least the minimum number of blinks.
                 break;
 
-            case TAP_SEQ_CMD:       // Output TMS & TDI values; get TDO value
-                blink_counter    = MAX_BYTE_VAL;               // Blink LED continuously during the (long) duration of this command.
+            case JTAG_CMD:       // Output TMS & TDI values; get TDO value
 
-                // The first packet received contains the TAP_SEQ_CMD command and the number
+                // The first packet received contains the JTAG_CMD command and the number
                 // of TDI bits that will follow in succeeding packets.
-                num_bits         = OutPacket->num_bits;
+                num_clks         = OutPacket->num_clks;
 
                 // Exit if no TDI bits will follow (this is probably an error...).
-                if ( num_bits == 0U )
-                    break; // Get flags from the first packet that indicate how TMS and TDO bits are handled.
+                if ( num_clks == 0U )
+                    break; 
 
-                flags      = OutPacket->flags;
-
-                hdr_size   = TAP_SEQ_CMD_HDR_LEN;                     // Size of the command header in the first packet.
-                tms_tdi    = (BYTE *)OutPacket + hdr_size;                     // Pointer to TMS+TDI bits that follow command bytes in first packet.
-                tdo        = (BYTE *)InPacket;                     // Pointer to buffer for storing TDO bits.
-
-                // Total number of header+TMS+TDI bytes in all the packets for this command.
-                num_bytes  = (DWORD)( ( num_bits + 7 ) / 8 );
-                if ( flags & PUT_TMS_MASK )
-                    num_bytes *= 2; // Twice the number of bytes if TMS bits are also being sent.
-                num_bytes += hdr_size;
+                // Get flags from the first packet that indicate how TMS and TDO bits are handled.
+                flags = OutPacket->flags;
 
                 // Initialize TCK, TMS and TDI levels.
                 TCK        = 0;                     // Initialize TCK (should have been low already).
@@ -927,31 +915,48 @@ BF_TEST_LOOP_1:
                 {
                     TDI = ( flags & TDI_VAL_MASK ) ? 1 : 0; // No TDI bits in packets, so set TDI to the static value indicated in the flag bit.
                 }
+                // Keep only the flags we need at this point. (Reduces code size.)
+                flags &= ( PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK );
 
-                #if USE_MSSP
-                switch ( flags & ( PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK ) )
+                // Total number of header+TMS+TDI bytes in all the packets for this command.
+                num_bytes  = (DWORD)( ( num_clks + 7 ) / 8 );
+                if ( (flags & PUT_TDI_MASK) && (flags & PUT_TMS_MASK) )
+                    num_bytes *= 2; // Twice the number of bytes if TMS and TDI bits are both being sent.
+                OutPacketLength -= JTAG_CMD_HDR_LEN;    // Subtract command header size to get number of data bytes in this packet.
+                tms_tdi    = (BYTE *)OutPacket + JTAG_CMD_HDR_LEN; // Pointer to TMS+TDI bits that follow command bytes in first packet.
+                tdo        = (BYTE *)InPacket;             // Pointer to buffer for storing TDO bits.
+
+                switch ( flags )
                 {
                     case GET_TDO_MASK:
+                        // If we are only getting TDO bits from the FPGA, then the outbound packet from the PC 
+                        // only contains the command header (no TMS or TDI bits). But we still set the length as 
+                        // if there were so the following loop will behave correctly.
+                        OutPacketLength = USBGEN_EP_SIZE;
+                        // *** Fall-through to the next case. Do not break! ***
                     case PUT_TDI_MASK:
-                        // These modes use the MSSP to send JTAG bits.
+                        #if USE_MSSP
+                        // Use the MSSP for speed if only sending TDI bits or only receiving TDO bits.
                         TCK_TRIS          = INPUT_PIN; // Disable the TCK output so that the clock won't glitch when the MSSP is enabled.
                         SSPCON1bits.SSPEN = 1; // Enable the MSSP.
                         TCK_TRIS          = OUTPUT_PIN; // Enable the TCK output after the MSSP glitch is over.
+                        #endif
                         break;
                     default:
                         // The rest of the modes use bit-banging to send the JTAG bits.
                         break;
                 }
-                #endif
 
                 // Process the first M-1 of M packets that are completely filled with TMS+TDI bits.
+                // (We fake the out-bound packet length for the case where we are just collecting TDO bits without TMS/TDI.)
                 while ( num_bytes > OutPacketLength )
                 {
+                    // Reduce the number of bytes left to process NOW, before OutPacketLength changes at the loop bottom!
                     num_bytes -= OutPacketLength;
 
                     if ( blink_counter == 0U )
                     {
-                        blink_counter = MAX_BYTE_VAL;   // Keep LED blinking during this command to indicate activity.
+                        blink_counter = NUM_ACTIVITY_BLINKS;   // Keep LED blinking during this command to indicate activity.
                     }
                     // Process the TMS & TDI bytes in the packet and collect the TDO bits.
                     switch ( flags & ( PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK ) )
@@ -959,8 +964,7 @@ BF_TEST_LOOP_1:
                         case GET_TDO_MASK:  // Just gather TDO bits
                             #if USE_MSSP
                             {
-                                tdi_byte          = ( flags & TDI_VAL_MASK ) ? 0xFF : 0x00;
-                                buffer_cntr       = OutPacketLength - hdr_size;
+                                buffer_cntr       = OutPacketLength;
                                 save_FSR0         = FSR0;
                                 save_FSR1         = FSR1;
                                 TBLPTR            = (UINT24)reverse_bits; // Setup the pointer to the bit-order table.
@@ -990,13 +994,13 @@ PRI_TAP_LOOP_3:
                                 MOVFF TABLAT, POSTINC0          // Store the TDO byte into the buffer and inc. the pointer.
                                 _endasm
                                 TCK = 0;
-//                                SSPCON1bits.SSPEN = 0;  // Turn off the MSSP.  The remaining bits are received manually.
                                 FSR0              = save_FSR0;
                                 FSR1              = save_FSR1;
+                                tdo += OutPacketLength; // Update pointer because it's used for packet length later.
                             }
                             #else
                             {
-                                for ( buffer_cntr = OutPacketLength - hdr_size; buffer_cntr != 0U; buffer_cntr-- )
+                                for ( buffer_cntr = OutPacketLength; buffer_cntr != 0U; buffer_cntr-- )
                                 {
                                     tdo_byte = 0; // Clear byte for receiving TDO bits.
                                     for ( bit_cntr = 8, bit_mask = 0x01; bit_cntr != 0U; bit_cntr--, bit_mask <<= 1 )
@@ -1012,10 +1016,10 @@ PRI_TAP_LOOP_3:
                             #endif
                             break;
 
-                        case PUT_TDI_MASK:  // Just output the TDI bits.
+                        case PUT_TDI_MASK:  // Just output the TDI bits to the FPGA.
                             #if USE_MSSP
                             {
-                                buffer_cntr       = OutPacketLength - hdr_size;
+                                buffer_cntr       = OutPacketLength;
                                 save_FSR0         = FSR0;
                                 save_FSR1         = FSR1;
                                 TBLPTR            = (UINT24)reverse_bits; // Setup the pointer to the bit-order table.
@@ -1041,13 +1045,12 @@ PRI_TAP_LOOP_1:
                                 MOVFF SSPBUF, TBLPTRL           // Get the TDO byte just to clear the buffer-full flag (don't use TDO).
                                 _endasm
                                 TCK = 0;
-//                                SSPCON1bits.SSPEN = 0;  // Turn off the MSSP.  The remaining bits are transmitted manually.
                                 FSR0              = save_FSR0;
                                 FSR1              = save_FSR1;
                             }
                             #else
                             {
-                                for ( buffer_cntr = OutPacketLength - hdr_size; buffer_cntr != 0U; buffer_cntr-- )
+                                for ( buffer_cntr = OutPacketLength; buffer_cntr != 0U; buffer_cntr-- )
                                 {
                                     tdi_byte = *tms_tdi++;
                                     for ( bit_cntr = 8, bit_mask = 0x01; bit_cntr != 0U; bit_cntr--, bit_mask <<= 1 )
@@ -1061,55 +1064,36 @@ PRI_TAP_LOOP_1:
                             #endif
                             break;
 
-                        case PUT_TDI_MASK | GET_TDO_MASK:   // Output only TDI bits while collecting TDO bits.
-                            for ( buffer_cntr = OutPacketLength - hdr_size; buffer_cntr != 0U; buffer_cntr-- )
-                            {
-                                tdi_byte = *tms_tdi++;
-                                tdo_byte = 0; // Clear byte for receiving TDO bits.
-                                for ( bit_cntr = 8, bit_mask = 0x01; bit_cntr != 0U; bit_cntr--, bit_mask <<= 1 )
-                                {
-                                    if ( TDO )
-                                        tdo_byte |= bit_mask;
-                                    TDI = tdi_byte & bit_mask ? 1 : 0;
-                                    TCK = 1;
-                                    TCK = 0;
-                                }
-                                *tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
-                            }
+                        case 0:
+                            // No TDI, TMS or TDO bits to handle so do nothing. (This must be an error!)
                             break;
 
-                        case PUT_TDI_MASK | PUT_TMS_MASK:   // Output both TDI & TMS bits and ignore TDO bits.
-                            for ( buffer_cntr = OutPacketLength - hdr_size; buffer_cntr != 0U; buffer_cntr -= 2 )
-                            {
-                                tms_byte = *tms_tdi++;
-                                tdi_byte = *tms_tdi++;
-                                for ( bit_cntr = 8, bit_mask = 0x01; bit_cntr != 0U; bit_cntr--, bit_mask <<= 1 )
-                                {
-                                    TMS = tms_byte & bit_mask ? 1 : 0;
-                                    TDI = tdi_byte & bit_mask ? 1 : 0;
-                                    TCK = 1;
-                                    TCK = 0;
-                                }
-                            }
-                            break;
-
-                        case PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK:    // Output both TDI & TMS bits while collecting TDO bits.
                         default:
-                            for ( buffer_cntr = OutPacketLength - hdr_size; buffer_cntr != 0U; buffer_cntr -= 2 )
+                            // Handle combination of TDI, TMS and/or TDO bits. This can be done slowly
+                            // so we don't worry about all the conditionals in the loop.
+                            buffer_cntr = OutPacketLength;
+                            if( (flags & PUT_TDI_MASK) && (flags & PUT_TMS_MASK) )
+                                buffer_cntr /= 2;
+                            for ( ; buffer_cntr != 0U; buffer_cntr-- )
                             {
-                                tms_byte = *tms_tdi++;
-                                tdi_byte = *tms_tdi++;
+                                if( flags & PUT_TMS_MASK )
+                                    tms_byte = *tms_tdi++;
+                                if( flags & PUT_TDI_MASK )
+                                    tdi_byte = *tms_tdi++;
                                 tdo_byte = 0; // Clear byte for receiving TDO bits.
                                 for ( bit_cntr = 8, bit_mask = 0x01; bit_cntr != 0U; bit_cntr--, bit_mask <<= 1 )
                                 {
                                     if ( TDO )
                                         tdo_byte |= bit_mask;
-                                    TMS = tms_byte & bit_mask ? 1 : 0;
-                                    TDI = tdi_byte & bit_mask ? 1 : 0;
+                                    if( flags & PUT_TMS_MASK )
+                                        TMS = tms_byte & bit_mask ? 1 : 0;
+                                    if( flags & PUT_TDI_MASK )
+                                        TDI = tdi_byte & bit_mask ? 1 : 0;
                                     TCK = 1;
                                     TCK = 0;
                                 }
-                                *tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
+                                if( flags & GET_TDO_MASK )
+                                    *tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
                             }
                             break;
                     } /* switch */
@@ -1117,24 +1101,30 @@ PRI_TAP_LOOP_1:
                     // Send all the recorded TDO bits back in a complete packet.
                     if ( flags & GET_TDO_MASK )
                     {
-                        // If received packets contain both TDI & TMS bits, return TDO packet is half-size (one TDO bit per TDI bit).
-                        if ( flags & PUT_TMS_MASK )
-                            InHandle[InIndex] = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, ( OutPacketLength - hdr_size ) / 2 );
-                        else
-                            InHandle[InIndex] = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, ( OutPacketLength - hdr_size ) );
+                        InHandle[InIndex] = USBGenWrite( USBGEN_EP_NUM, (BYTE *)InPacket, tdo - (BYTE*)InPacket );
+                        // TDO bits have now been queued for transmission, so move pointer to next ping-pong buffer.
                         InIndex ^= 1;
+                        // Wait until previous packet of TDO bits has been transmitted so we don't overwrite it.
                         while ( USBHandleBusy( InHandle[InIndex] ) )
                             ;                             // Wait until USB transmitter is not busy.
                         InPacket = &InBuffer[InIndex];
+                        if( flags == GET_TDO_MASK )
+                        {
+                            // If we are only getting TDO bits from the FPGA and sending them over the USB link,
+                            // then there are no outbound packets coming from the PC. But we still set the length as 
+                            // if there were so this loop will still keep running until all of the TDO bits have
+                            // been sent to the PC (except for the final packet).
+                            OutPacketLength = USBGEN_EP_SIZE;
+                        }
                     }
 
-                    if ( flags & PUT_TDI_MASK )
+                    if ( flags & ( PUT_TDI_MASK | PUT_TMS_MASK ) )
                     {
                         // This command packet has been handled, so get another.
                         OutHandle[OutIndex] = USBGenRead( USBGEN_EP_NUM, (BYTE *)&OutBuffer[OutIndex], USBGEN_EP_SIZE );
                         OutIndex ^= 1; // Point to next ping-pong buffer.
 
-                        // Wait until the next packet of TMS & TDI bits arrives.
+                        // Wait until the next packet of TMS and/or TDI bits arrives.
                         while ( USBHandleBusy( OutHandle[OutIndex] ) )
                             ;
                         OutPacket       = &OutBuffer[OutIndex]; // Store pointer to just-received packet.
@@ -1143,147 +1133,55 @@ PRI_TAP_LOOP_1:
 
                     tms_tdi  = (BYTE *)OutPacket;
                     tdo      = (BYTE *)InPacket;
-
-                    hdr_size = 0;  // There is no command header in any packets following the first, just TDI & TMS bits.
-                }  // First M-1 TDI packets have been processed.
+                }  // Process all but the final packet of TMS/TDI/TDO bits.
 
                 #if USE_MSSP
                 TCK = 0;
-                SSPCON1bits.SSPEN = 0;  // Turn off the MSSP.  The remaining bits are transmitted manually.
+                SSPCON1bits.SSPEN = 0;  // Turn off the MSSP.  The remaining bits are transmitted bit-bang style.
                 #endif
 
-                // If only one packet was received, this will subtract the number of command header bytes.
-                // Otherwise, the number of bytes is just the number in the last packet.
-                num_bytes -= hdr_size;
-
-                // Process all except the last TDI byte in the final packet.
-                switch ( flags & ( PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK ) )
+                // Process the final packet.
+                buffer_cntr = num_bytes;
+                if( (flags & PUT_TDI_MASK) && (flags & PUT_TMS_MASK) )
+                    buffer_cntr /= 2;
+                // This sets the number of bytes that will be returned from this final packet to the PC.
+                if( flags & GET_TDO_MASK )
+                    num_return_bytes = buffer_cntr;
+                // This is the last packet, so we can afford to be slow with conditionals in the loop.
+                for ( ; buffer_cntr != 0; buffer_cntr-- )
                 {
-                    case GET_TDO_MASK:  // Just gather TDO bits
-                        for ( buffer_cntr = num_bytes; buffer_cntr > 1U; buffer_cntr-- )
+                    if( flags & PUT_TMS_MASK )
+                        tms_byte = *tms_tdi++;
+                    if( flags & PUT_TDI_MASK )
+                        tdi_byte = *tms_tdi++;
+                    tdo_byte = 0; // Clear byte for receiving TDO bits.
+
+                    bit_cntr = 8; // All except last byte have 8 bits to process.
+                    if( buffer_cntr == 1 )
+                    {
+                        // Send the last few bits of the last byte of TDI bits.
+                        // Compute the number of bits in the final byte of the final packet.
+                        // (This computation only works because num_clks != 0.)
+                        bit_cntr = num_clks & 0x7;
+                        if ( bit_cntr == 0U )
                         {
-                            tdo_byte = 0; // Clear byte for receiving TDO bits.
-                            for ( bit_cntr = 8, bit_mask = 0x01; bit_cntr != 0U; bit_cntr--, bit_mask <<= 1 )
-                            {
-                                if ( TDO )
-                                    tdo_byte |= bit_mask;
-                                TCK = 1;
-                                TCK = 0;
-                            }
-                            *tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
+                            bit_cntr = 8U;
                         }
-                        break;
-
-                    case PUT_TDI_MASK:  // Just output the TDI bits.
-                        for ( buffer_cntr = num_bytes; buffer_cntr > 1U; buffer_cntr-- )
-                        {
-                            tdi_byte = *tms_tdi++;
-                            for ( bit_cntr = 8, bit_mask = 0x01; bit_cntr != 0U; bit_cntr--, bit_mask <<= 1 )
-                            {
-                                TDI = tdi_byte & bit_mask ? 1 : 0;
-                                TCK = 1;
-                                TCK = 0;
-                            }
-                        }
-                        break;
-
-                    case PUT_TDI_MASK | GET_TDO_MASK:   // Output only TDI bits while collecting TDO bits.
-                        for ( buffer_cntr = num_bytes; buffer_cntr > 1U; buffer_cntr-- )
-                        {
-                            tdi_byte = *tms_tdi++;
-                            tdo_byte = 0; // Clear byte for receiving TDO bits.
-                            for ( bit_cntr = 8, bit_mask = 0x01; bit_cntr != 0U; bit_cntr--, bit_mask <<= 1 )
-                            {
-                                if ( TDO )
-                                    tdo_byte |= bit_mask;
-                                TDI = tdi_byte & bit_mask ? 1 : 0;
-                                TCK = 1;
-                                TCK = 0;
-                            }
-                            *tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
-                        }
-                        break;
-
-                    case PUT_TDI_MASK | PUT_TMS_MASK:   // Output both TDI & TMS bits and ignore TDO bits.
-                        for ( buffer_cntr = num_bytes; buffer_cntr > 2U; buffer_cntr -= 2 )
-                        {
-                            tms_byte = *tms_tdi++;
-                            tdi_byte = *tms_tdi++;
-                            for ( bit_cntr = 8, bit_mask = 0x01; bit_cntr != 0U; bit_cntr--, bit_mask <<= 1 )
-                            {
-                                TMS = tms_byte & bit_mask ? 1 : 0;
-                                TDI = tdi_byte & bit_mask ? 1 : 0;
-                                TCK = 1;
-                                TCK = 0;
-                            }
-                        }
-                        break;
-
-                    case PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK:    // Output both TDI & TMS bits while collecting TDO bits.
-                    default:
-                        for ( buffer_cntr = num_bytes; buffer_cntr > 2U; buffer_cntr -= 2 )
-                        {
-                            tms_byte = *tms_tdi++;
-                            tdi_byte = *tms_tdi++;
-                            tdo_byte = 0; // Clear byte for receiving TDO bits.
-                            for ( bit_cntr = 8, bit_mask = 0x01; bit_cntr != 0U; bit_cntr--, bit_mask <<= 1 )
-                            {
-                                if ( TDO )
-                                    tdo_byte |= bit_mask;
-                                TMS = tms_byte & bit_mask ? 1 : 0;
-                                TDI = tdi_byte & bit_mask ? 1 : 0;
-                                TCK = 1;
-                                TCK = 0;
-                            }
-                            *tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
-                        }
-                        break;
-                } /* switch */
-
-                // Send the last few bits of the last byte of TDI bits.
-                // Compute the number of bits in the final byte of the final packet.
-                // (This computation only works because num_bits != 0.)
-                bit_cntr = num_bits & 0x7;
-                if ( bit_cntr == 0U )
-                {
-                    bit_cntr = 8U; // Read last TMS & TDI bytes from the packet and transmit them.
-                }
-                if ( flags & PUT_TMS_MASK )
-                    tms_byte = *tms_tdi++;
-                if ( flags & PUT_TDI_MASK )
-                    tdi_byte = *tms_tdi;
-                else
-                    tdi_byte = ( flags & TDI_VAL_MASK ) ? 0xFF : 0x00;
-                tdo_byte = 0; // Clear byte for receiving last TDO bits.
-                for ( bit_mask = 0x01; bit_cntr != 0U; bit_cntr--, bit_mask <<= 1 )
-                {
-                    if ( TDO )
-                        tdo_byte |= bit_mask;
-                    if ( flags & PUT_TMS_MASK )
-                        TMS = tms_byte & bit_mask ? 1 : 0;
-                    TDI = tdi_byte & bit_mask ? 1 : 0;
-                    TCK = 1;
-                    TCK = 0;
-                }
-
-                // Send back the final packet of TDO bits.
-                if ( flags & GET_TDO_MASK )
-                {
-                    *tdo = tdo_byte;     // Store last few TDO bits into the outgoing packet.
-                    if ( flags & PUT_TMS_MASK )
-                        num_return_bytes = num_bytes / 2;
-                    else
-                        num_return_bytes = num_bytes;
-                }
-
-                // Blink the LED a few times after a long command completes.
-                if ( blink_counter < MAX_BYTE_VAL - NUM_ACTIVITY_BLINKS )
-                {
-                    blink_counter = 0;  // Already done enough LED blinks.
-                }
-                else
-                {
-                    blink_counter -= ( MAX_BYTE_VAL - NUM_ACTIVITY_BLINKS );    // Do at least the minimum number of blinks.
+                    }
+                    // bit_cntr was set up above.
+                    for ( bit_mask = 0x01; bit_cntr != 0U; bit_cntr--, bit_mask <<= 1 )
+                    {
+                        if ( TDO )
+                            tdo_byte |= bit_mask;
+                        if( flags & PUT_TMS_MASK )
+                            TMS = tms_byte & bit_mask ? 1 : 0;
+                        if( flags & PUT_TDI_MASK )
+                            TDI = tdi_byte & bit_mask ? 1 : 0;
+                        TCK = 1;
+                        TCK = 0;
+                    }
+                    if( flags & GET_TDO_MASK )
+                        *tdo++ = tdo_byte; // Store received TDO bits into the outgoing packet.
                 }
                 break;
 
