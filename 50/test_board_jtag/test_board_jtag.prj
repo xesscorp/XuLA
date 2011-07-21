@@ -1,0 +1,8 @@
+vhdl work "../../XuLA_lib/common.vhd"
+vhdl work "../../XuLA_lib/randgen.vhd"
+vhdl work "../../XuLA_lib/sdramcntl.vhd"
+vhdl work "../../XuLA_lib/memtest.vhd"
+vhdl work "../../XuLA_lib/UserInstrJtag.vhd"
+vhdl work "../../XuLA_lib/TestBoardCore.vhd"
+vhdl work "../../XuLA_lib/clkgen.vhd"
+vhdl work "test_board_jtag.vhd"

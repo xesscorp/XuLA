@@ -1,0 +1,19 @@
+# Output products list for <CharRom>
+CharRom.asy
+CharRom.gise
+CharRom.ise
+CharRom.mif
+CharRom.ngc
+CharRom.sym
+CharRom.v
+CharRom.veo
+CharRom.vhd
+CharRom.vho
+CharRom.xco
+CharRom.xise
+CharRom_flist.txt
+CharRom_readme.txt
+CharRom_xdb\tmp\
+CharRom_xmdf.tcl
+_xmsgs\
+blk_mem_gen_ds512.pdf

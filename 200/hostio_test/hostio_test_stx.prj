@@ -1,0 +1,4 @@
+vhdl isim_temp "../../XuLA_lib/sync_to_clk.vhd"
+vhdl isim_temp "../../XuLA_lib/common.vhd"
+vhdl isim_temp "../../XuLA_lib/hostio.vhd"
+vhdl isim_temp "hostio_test.vhd"

@@ -1,0 +1,116 @@
+#---------------------------------------------------------------------
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
+#
+# ©1997-2011 - X Engineering Software Systems Corp. (www.xess.com)
+#---------------------------------------------------------------------
+
+net fpgaClk_i      loc = p43;    # 12 MHz clock input.
+
+##############################
+# SDRAM
+##############################
+net sdramClk_o     loc = p40;
+net sdramClkFb_i   loc = p41;
+net ras_bo         loc = p59;
+net cas_bo         loc = p60;
+net we_bo          loc = p64;
+net bs_o           loc = p53;
+net addr_o<0>      loc = p49;
+net addr_o<1>      loc = p48;
+net addr_o<2>      loc = p46;
+net addr_o<3>      loc = p31;
+net addr_o<4>      loc = p30;
+net addr_o<5>      loc = p29;
+net addr_o<6>      loc = p28;
+net addr_o<7>      loc = p27;
+net addr_o<8>      loc = p23;
+net addr_o<9>      loc = p24;
+net addr_o<10>     loc = p51;
+net addr_o<11>     loc = p25;
+net dddr_o<0>      loc = p90;
+net data_io<1>     loc = p77;
+net data_io<2>     loc = p78;
+net data_io<3>     loc = p85;
+net data_io<4>     loc = p86;
+net data_io<5>     loc = p71;
+net data_io<6>     loc = p70;
+net data_io<7>     loc = p65;
+net data_io<8>     loc = p16;
+net data_io<9>     loc = p15;
+net data_io<10>    loc = p10;
+net data_io<11>    loc = p9;
+net data_io<12>    loc = p6;
+net data_io<13>    loc = p5;
+net data_io<14>    loc = p99;
+net data_io<15>    loc = p98;
+
+##############################
+# Prototyping Header
+##############################
+net chanClk_io     loc = p44;    # I/O
+net chan_io<0>     loc = p36;    # I/O
+net chan_io<1>     loc = p37;    # I/O
+net chan_i<2>      loc = p39;    # Input-only
+net chan_io<3>     loc = p50;    # I/O
+net chan_io<4>     loc = p52;    # I/O
+net chan_io<5>     loc = p56;    # I/O
+net chan_io<6>     loc = p57;    # I/O
+net chan_io<7>     loc = p61;    # I/O
+net chan_io<8>     loc = p62;    # I/O
+net chan_i<9>      loc = p68;    # Input-only
+net chan_io<10>    loc = p72;    # I/O
+net chan_io<11>    loc = p73;    # I/O
+net chan_i<12>     loc = p82;    # Input-only
+net chan_io<13>    loc = p83;    # I/O
+net chan_io<14>    loc = p84;    # I/O
+net chan_io<15>    loc = p35;    # I/O
+net chan_io<16>    loc = p34;    # I/O
+net chan_io<17>    loc = p33;    # I/O
+net chan_io<18>    loc = p32;    # I/O
+net chan_i<19>     loc = p21;    # Input-only
+net chan_io<20>    loc = p20;    # I/O
+net chan_io<21>    loc = p19;    # I/O
+net chan_io<22>    loc = p13;    # I/O
+net chan_io<23>    loc = p12;    # I/O
+net chan_i<24>     loc = p7;     # Input-only
+net chan_io<25>    loc = p4;     # I/O
+net chan_io<26>    loc = p3;     # I/O
+net chan_i<27>     loc = p97;    # Input-only
+net chan_io<28>    loc = p94;    # I/O
+net chan_io<29>    loc = p93;    # I/O
+net chan_io<30>    loc = p89;    # I/O
+net chan_io<31>    loc = p88;    # I/O
+
+##############################
+# I/O Drive
+##############################
+net fpgaClk_i      IOSTANDARD = LVTTL;
+net sdramClk_o     IOSTANDARD = LVTTL | SLEW=FAST | DRIVE=8;
+net sdramClkFb_i   IOSTANDARD = LVTTL;
+net addr_o*        IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
+net bs_o           IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
+net ras_bo         IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
+net cas_bo         IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
+net we_bo          IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
+net data_io*       IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
+net chan*          IOSTANDARD = LVTTL;
+
+##############################
+# Clock Nets
+##############################
+NET "fpgaClk_i" TNM_NET = "fpgaClk";
+TIMESPEC "TS_fpgaClk" = PERIOD "fpgaClk" 83 ns HIGH 50%;
+NET "fpgaClk_i" CLOCK_DEDICATED_ROUTE = FALSE;

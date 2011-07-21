@@ -1,0 +1,3 @@
+vhdl work "../XuLA_lib/common.vhd"
+vhdl work "../XuLA_lib/flashcntl.vhd"
+vhdl work "flashcntl_tb.vhd"

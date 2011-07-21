@@ -1,0 +1,120 @@
+FPGA JTAG Memory (fjmem) Design
+===============================
+$Id$
+
+
+Introduction
+------------
+
+This directory contains the VHDL design files that complement UrJTAG's fjmem
+bus driver. The fjmem system utilizes generic embedded JTAG components that
+are available in several FPGA families. These stubs connect to the fjmem_core
+design and act as the interface to the external JTAG chain.
+
+The fjmem_core design implements a data register that is hooked into the JTAG
+chain when a USER instruction is selected. UrJTAG communicates with fjmem_core
+by shifting command, address and data information through this register. This
+information is processed by fjmem_core and results in read or write operations
+on a generic memory interface.
+
+
+JTAG stubs
+----------
+
+Modern FPGA devices contain a JTAG component that allows user logic to connect
+to the external JTAG chain. Xilinx devices like the Spartan 3 call it
+BSCAN_SPARTAN3 while it's named cyclone_jtag in Altera's Cyclone
+devices. Apart from details, both components provide equivalent
+functionality: User logic can place a data shift register between TDI and TDO
+that is activated by special USER instructions.
+
+Xilinx BSCAN_SPARTAN3:
+  * USER1, opcode 00010
+  * USER2, opcode 00011
+Extensively documented in "Configuration and Readback of Spartan-II FPGAs
+Using Boundary Scan" (xapp188.pdf).
+
+Altera cyclone_jtag:
+  * USER0, opcode 0000001100
+  * USER1, opcode 0000001110
+Briefly mentioned in the "MAXII Device Handbook".
+
+
+Integration
+-----------
+
+A short description of fjmem_core's ports:
+
+  -- JTAG Interface
+  clkdr_i  - TCK clock
+  trst_i   - TAP reset
+  shift_i  - Shift enable
+  update_i - Update clock
+  tdi_i    - TDI chain input
+  tdo_o    - TDO chain output
+  -- Memory Interface
+  clk_i    - Clock
+  res_i    - Reset
+  strobe_o - Strobe
+  read_o   - Read enable
+  write_o  - Write enable
+  ack_i    - Acknowledge
+  cs_o     - Chip select lines
+  addr_o   - Address vector
+  din_i    - Data input vector
+  dout_o   - Data output vector
+
+
+Whenever the fjmem_core receives a command from the fjmem bus driver, it
+issues the according signals on the memory interface. This interface is
+synchronous to clk_i.
+
+Active strobe_o announces a read or write operation. All other outputs are
+valid only when strobe_o is '1'. Access direction outputs read_o and write_o
+are mutually exclusive. cs_o is a one-hot vector and identifies the selected
+memory block.
+
+Two sample toplevel designs are provided for Cyclone and Spartan3 devices that
+demonstrate the attachment of asynchronous and synchronous (on-chip) memories.
+
+
+Configuration
+-------------
+
+The specific configuration of fjmem_core is taken from fjmem_config_pack. The
+user has to set a number of constants that determine the behavior of the core
+design.
+
+  -- Specify the active levels of trst_i, shift_i and res_i
+  trst_act_level_c  - TRST active level
+  shift_act_level_c - Shift enable active level
+  res_act_level_c   - res_i active level
+
+A block is a consecutive memory range that has a common geometry, i.e. it
+represents a single memory component in the system. The number of block
+relates directly to the number of lines in the cs_o chip select vector.
+
+  -- number of used blocks
+  constant num_blocks_c      : natural := 4;
+  -- number of bits for block field
+  constant num_block_field_c : natural := 2;
+
+Specify the geometry of each block: address and data vector width. The block
+(= memory range) is expected to use the full address vector width.
+
+  constant blocks_c : block_array_t :=
+    ((addr_width => 18,                 -- block #0
+      data_width => 16),
+     (addr_width => 18,                 -- block #1
+      data_width => 16),
+     (addr_width => 19,                 -- block #2
+      data_width =>  8),
+     (addr_width =>  8,                 -- block #3
+      data_width =>  8)
+    );
+
+For completeness, it's required to set constants for the maximum address and
+data vector widths.
+
+  constant max_addr_width_c : natural := 19;
+  constant max_data_width_c : natural := 16;

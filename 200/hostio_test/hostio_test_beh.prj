@@ -1,0 +1,4 @@
+vhdl work "../../XuLA_lib/sync_to_clk.vhd"
+vhdl work "../../XuLA_lib/common.vhd"
+vhdl work "../../XuLA_lib/hostio.vhd"
+vhdl work "hostio_test.vhd"

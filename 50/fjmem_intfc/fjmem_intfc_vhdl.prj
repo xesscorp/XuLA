@@ -1,0 +1,7 @@
+vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\50\fjmem_intfc\fjmem_config_pack.vhd"
+vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\common.vhd"
+vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\50\fjmem_intfc\fjmem\fjmem_pack-p.vhd"
+vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\sdramcntl.vhd"
+vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\50\fjmem_intfc\fjmem\fjmem_core.vhd"
+vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\50\fjmem_intfc\fjmem.vhd"
+vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\50\fjmem_intfc\fjmem_intfc.vhd"

@@ -1,0 +1,11 @@
+net clk_p loc=p43;
+NET "clk_p" CLOCK_DEDICATED_ROUTE = FALSE;
+net heartBeat_p loc=p36;
+net diag_p<0> loc=p37;
+net diag_p<1> loc=p50;
+net diag_p<2> loc=p52;
+net diag_p<3> loc=p56;
+net diag_p<4> loc=p57;
+net diag_p<5> loc=p61;
+net diag_p<6> loc=p62;
+net diag_p<7> loc=p72;
