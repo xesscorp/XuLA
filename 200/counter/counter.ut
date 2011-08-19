@@ -19,7 +19,7 @@
 -g LCK_cycle:NoWait
 -g Security:None
 -g DonePipe:No
--g DriveDone:No
+-g DriveDone:Yes
 -g en_sw_gsr:No
 -g en_porb:Yes
 -g drive_awake:No

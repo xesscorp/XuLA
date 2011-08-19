@@ -37,15 +37,15 @@ use UNISIM.VComponents.all;
 
 entity test_board_jtag is
   generic(
-    BASE_FREQ_G   : real    := 12.0;      -- base frequency in MHz
-    CLK_MUL_G     : natural := 25;        -- multiplier for base frequency
-    CLK_DIV_G     : natural := 3;         -- divider for base frequency
+    BASE_FREQ_G   : real    := 12.0;    -- base frequency in MHz
+    CLK_MUL_G     : natural := 25;      -- multiplier for base frequency
+    CLK_DIV_G     : natural := 3;       -- divider for base frequency
     PIPE_EN_G     : boolean := true;
-    DATA_WIDTH_G  : natural := 16;        -- width of data
-    HADDR_WIDTH_G : natural := 23;        -- host-side address width
-    SADDR_WIDTH_G : natural := 12;        -- SDRAM address bus width
-    NROWS_G       : natural := 4096;      -- number of rows in each SDRAM bank
-    NCOLS_G       : natural := 512;       -- number of words in each row
+    DATA_WIDTH_G  : natural := 16;      -- width of data
+    HADDR_WIDTH_G : natural := 23;      -- host-side address width
+    SADDR_WIDTH_G : natural := 12;      -- SDRAM address bus width
+    NROWS_G       : natural := 4096;    -- number of rows in each SDRAM bank
+    NCOLS_G       : natural := 512;     -- number of words in each row
     -- beginning and ending addresses for the entire SDRAM
     BEG_ADDR_G    : natural := 16#00_0000#;
     END_ADDR_G    : natural := 16#7F_FFFF#;
@@ -55,61 +55,61 @@ entity test_board_jtag is
     END_TEST_G    : natural := 16#3F_FFFF#
     );
   port(
-    fpgaClk     : in    std_logic;  -- main clock input from external clock source
-    sdramClk    : out   std_logic;     -- clock to SDRAM
-    sdramClkFb : in    std_logic;     -- SDRAM clock comes back in
-    ras_b        : out   std_logic;     -- SDRAM RAS
-    cas_b        : out   std_logic;     -- SDRAM CAS
-    we_b         : out   std_logic;     -- SDRAM write-enable
-    bs           : out   std_logic;     -- SDRAM bank-address
-    a            : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus
-    d            : inout std_logic_vector(DATA_WIDTH_G-1 downto 0)  -- data bus to/from SDRAM
+    fpgaClk_i : in    std_logic;  -- main clock input from external clock source
+    sdClk_o   : out   std_logic;        -- clock to SDRAM
+    sdClkFb_i : in    std_logic;        -- SDRAM clock comes back in
+    sdRas_bo  : out   std_logic;        -- SDRAM RAS
+    sdCas_bo  : out   std_logic;        -- SDRAM CAS
+    sdWe_bo   : out   std_logic;        -- SDRAM write-enable
+    sdBs_o    : out   std_logic;        -- SDRAM bank-address
+    sdAddr_o  : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus
+    sdData_io : inout std_logic_vector(DATA_WIDTH_G-1 downto 0)  -- data bus to/from SDRAM
     );
 end entity;
 
 
 architecture arch of test_board_jtag is
 
-  constant FREQ_G  : real := (BASE_FREQ_G * real(CLK_MUL_G)) / real(CLK_DIV_G);
-  signal clk     : std_logic;
-  
-  -- signals to/from the JTAG BSCAN module
-  signal bscan_drck    : std_logic; -- JTAG clock from BSCAN module
-  signal bscan_reset   : std_logic; -- true when BSCAN module is reset
-  signal bscan_sel     : std_logic; -- true when BSCAN module selected
-  signal bscan_shift   : std_logic; -- true when TDI & TDO are shifting data
-  signal bscan_update  : std_logic; -- BSCAN TAP is in update-dr state
-  signal bscan_tdi     : std_logic; -- data received on TDI pin
-  signal bscan_tdo     : std_logic; -- scan data sent to TDO pin
+  constant FREQ_G : real := (BASE_FREQ_G * real(CLK_MUL_G)) / real(CLK_DIV_G);
+  signal clk      : std_logic;
 
-  signal run_test      : std_logic; -- set to run the test
-  signal run           : std_logic; -- run test either from JTAG instr or manual button
-  signal test_progress : std_logic_vector(1 downto 0); -- progress of the test
-  signal test_failed   : std_logic; -- true if an error was found during the test
+  -- signals to/from the JTAG BSCAN module
+  signal bscan_drck   : std_logic;      -- JTAG clock from BSCAN module
+  signal bscan_reset  : std_logic;      -- true when BSCAN module is reset
+  signal bscan_sel    : std_logic;      -- true when BSCAN module selected
+  signal bscan_shift  : std_logic;  -- true when TDI & TDO are shifting data
+  signal bscan_update : std_logic;      -- BSCAN TAP is in update-dr state
+  signal bscan_tdi    : std_logic;      -- data received on TDI pin
+  signal bscan_tdo    : std_logic;      -- scan data sent to TDO pin
+
+  signal run_test      : std_logic;     -- set to run the test
+  signal run           : std_logic;  -- run test either from JTAG instr or manual button
+  signal test_progress : std_logic_vector(1 downto 0);  -- progress of the test
+  signal test_failed   : std_logic;  -- true if an error was found during the test
 
 begin
 
   u0 : Clkgen
     generic map (BASE_FREQ_G => BASE_FREQ_G, CLK_MUL_G => CLK_MUL_G, CLK_DIV_G => CLK_DIV_G)
-    port map(I             => fpgaClk, O => sdramClk);
+    port map(I               => fpgaClk_i, O => sdClk_o);
 
-  clk <= sdramClkFb;  -- main clock is SDRAM clock fed back into FPGA
+  clk <= sdClkFb_i;  -- main clock is SDRAM clock fed back into FPGA
 
   -- boundary-scan interface to FPGA JTAG port
   u_bscan : BSCAN_SPARTAN3
     port map(
-      DRCK1   => bscan_drck,  -- JTAG clock
-      RESET   => bscan_reset, -- true when JTAG TAP FSM is reset
-      SEL1    => bscan_sel,   -- USER1 instruction enables execution of the RAM interface
-      SHIFT   => bscan_shift, -- true when JTAG TAP FSM is in the SHIFT-DR state
-      TDI     => bscan_tdi,   -- data bits from the PC arrive through here
-      UPDATE  => bscan_update,
-      TDO1    => bscan_tdo,   -- LSbit of the tdo register outputs onto TDO pin and to the PC
-      TDO2    => '0'          -- not using this input, so just hold it low
+      DRCK1  => bscan_drck,             -- JTAG clock
+      RESET  => bscan_reset,            -- true when JTAG TAP FSM is reset
+      SEL1   => bscan_sel,  -- USER1 instruction enables execution of the RAM interface
+      SHIFT  => bscan_shift,  -- true when JTAG TAP FSM is in the SHIFT-DR state
+      TDI    => bscan_tdi,  -- data bits from the PC arrive through here
+      UPDATE => bscan_update,
+      TDO1   => bscan_tdo,  -- LSbit of the tdo register outputs onto TDO pin and to the PC
+      TDO2   => '0'         -- not using this input, so just hold it low
       );
-  
+
   -- JTAG interface
-  u1: UserInstrJtag
+  u1 : UserInstrJtag
     generic map(
       FPGA_TYPE_G         => SPARTAN3_G,
       ENABLE_TEST_INTFC_G => true,
@@ -124,15 +124,15 @@ begin
       bscan_update  => bscan_update,
       bscan_tdi     => bscan_tdi,
       bscan_tdo     => bscan_tdo,
-      begun         => YES, -- don't care
-      done          => YES, -- don't care
-      din           => "0000000000000000", -- don't care
+      begun         => YES,                 -- don't care
+      done          => YES,                 -- don't care
+      din           => "0000000000000000",  -- don't care
       run_test      => run_test,
       test_progress => test_progress,
       test_failed   => test_failed
       );
 
-  run <= run_test; -- run test when instruction is given or button is pressed
+  run <= run_test;  -- run test when instruction is given or button is pressed
 
   -- board diagnostic unit
   u2 : TestBoardCore
@@ -149,16 +149,15 @@ begin
       END_TEST_G    => END_TEST_G
       )
     port map(
-      clk         => clk,
-      ras_b       => ras_b,
-      cas_b       => cas_b,
-      we_b        => we_b,
-      ba(0)       => bs,
-	  ba(1)       => open,
-      sAddr       => a,
-      sData       => d,
-      progress    => test_progress,
-      err         => test_failed
+      clk_i      => clk,
+      sdRas_bo   => sdRas_bo,
+      sdCas_bo   => sdCas_bo,
+      sdWe_bo    => sdWe_bo,
+      sdBs_o(0)  => sdBs_o,
+      sdAddr_o   => sdAddr_o,
+      sdData_io  => sdData_io,
+      progress_o => test_progress,
+      err_o      => test_failed
       );
 
 end architecture;

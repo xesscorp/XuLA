@@ -1,2 +1,2 @@
-vhdl work "../../XuLA_lib/clkgen.vhd"
+vhdl work "../../XuLA_lib/ClkGen.vhd"
 vhdl work "counter.vhd"

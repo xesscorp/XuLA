@@ -27,14 +27,15 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 
 package TestBoardCorePckg is
-  component TestBoardCore
+
+  component TestBoardCore is
     generic(
-      FREQ_G        : real    := 100.0;   -- frequency of operation in MHz
-      PIPE_EN_G     : boolean := true;    -- enable fast, pipelined SDRAM operation
-      DATA_WIDTH_G  : natural := 16;      -- SDRAM data width
-      SADDR_WIDTH_G : natural := 13;      -- SDRAM row/col address width
-      NROWS_G       : natural := 4096;    -- number of rows in the SDRAM
-      NCOLS_G       : natural := 512;     -- number of columns in each SDRAM row
+      FREQ_G        : real    := 100.0;  -- frequency of operation in MHz
+      PIPE_EN_G     : boolean := true;  -- enable fast, pipelined SDRAM operation
+      DATA_WIDTH_G  : natural := 16;    -- SDRAM data width
+      SADDR_WIDTH_G : natural := 13;    -- SDRAM row/col address width
+      NROWS_G       : natural := 4096;  -- number of rows in the SDRAM
+      NCOLS_G       : natural := 512;   -- number of columns in each SDRAM row
       -- beginning and ending addresses for the entire SDRAM
       BEG_ADDR_G    : natural := 16#00_0000#;
       END_ADDR_G    : natural := 16#7F_FFFF#;
@@ -43,23 +44,20 @@ package TestBoardCorePckg is
       END_TEST_G    : natural := 16#7F_FFFF#
       );
     port(
-      clk       : in    std_logic;  -- main clock input from external clock source
-      cke       : out   std_logic;      -- SDRAM clock-enable
-      cs_n      : out   std_logic;      -- SDRAM chip-select
-      ras_b     : out   std_logic;      -- SDRAM RAS
-      cas_b     : out   std_logic;      -- SDRAM CAS
-      we_b      : out   std_logic;      -- SDRAM write-enable
-      ba        : out   std_logic_vector(1 downto 0);  -- SDRAM bank-address
-      sAddr     : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus
-      sData     : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- data from SDRAM
-      dqmh      : out   std_logic;      -- SDRAM DQMH
-      dqml      : out   std_logic;      -- SDRAM DQML
-      progress  : out   std_logic_vector(1 downto 0);  -- test progress indicator
-      err       : out   std_logic;  -- true if an error was found during test
-      led       : out   std_logic_vector(15 downto 0);  -- dual seven-segment LEDs
-      heartBeat : out   std_logic  -- heartbeat status (usually sent to parallel port status pin)
+      clk_i       : in    std_logic;  -- main clock input from external clock source
+      sdRas_bo    : out   std_logic;    -- SDRAM RAS
+      sdCas_bo    : out   std_logic;    -- SDRAM CAS
+      sdWe_bo     : out   std_logic;    -- SDRAM write-enable
+      sdBs_o      : out   std_logic_vector(0 downto 0);  -- SDRAM bank-address
+      sdAddr_o    : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus
+      sdData_io   : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- data from SDRAM
+      progress_o  : out   std_logic_vector(1 downto 0);  -- test progress_o indicator
+      err_o       : out   std_logic;  -- true if an error was found during test
+      led_o       : out   std_logic_vector(15 downto 0);  -- dual seven-segment LEDs
+      heartBeat_o : out   std_logic  -- heartBeat_o status (usually sent to parallel port status pin)
       );
   end component;
+
 end package;
 
 
@@ -74,12 +72,12 @@ use WORK.SdramCntlPckg.all;
 
 entity TestBoardCore is
   generic(
-    FREQ_G        : real := 100.0;        -- frequency of operation in MHz
-    PIPE_EN_G     : boolean := true;      -- enable fast, pipelined SDRAM operation
-    DATA_WIDTH_G  : natural := 16;        -- SDRAM data width
-    SADDR_WIDTH_G : natural := 13;        -- SDRAM row/col address width
-    NROWS_G       : natural := 4096;      -- number of rows in the SDRAM
-    NCOLS_G       : natural := 512;       -- number of columns in each SDRAM row
+    FREQ_G        : real    := 100.0;   -- frequency of operation in MHz
+    PIPE_EN_G     : boolean := true;  -- enable fast, pipelined SDRAM operation
+    DATA_WIDTH_G  : natural := 16;      -- SDRAM data width
+    SADDR_WIDTH_G : natural := 13;      -- SDRAM row/col address width
+    NROWS_G       : natural := 4096;    -- number of rows in the SDRAM
+    NCOLS_G       : natural := 512;     -- number of columns in each SDRAM row
     -- beginning and ending addresses for the entire SDRAM
     BEG_ADDR_G    : natural := 16#00_0000#;
     END_ADDR_G    : natural := 16#7F_FFFF#;
@@ -88,28 +86,24 @@ entity TestBoardCore is
     END_TEST_G    : natural := 16#7F_FFFF#
     );
   port(
-    clk       : in    std_logic;  -- main clock input from external clock source
-    cke       : out   std_logic;        -- SDRAM clock-enable
-    cs_n      : out   std_logic;        -- SDRAM chip-select
-    ras_b     : out   std_logic;        -- SDRAM RAS
-    cas_b     : out   std_logic;        -- SDRAM CAS
-    we_b      : out   std_logic;        -- SDRAM write-enable
-    ba        : out   std_logic_vector(1 downto 0);  -- SDRAM bank-address
-    sAddr     : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus
-    sData     : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- data from SDRAM
-    dqmh      : out   std_logic;        -- SDRAM DQMH
-    dqml      : out   std_logic;        -- SDRAM DQML
-    progress  : out   std_logic_vector(1 downto 0);  -- test progress indicator
-    err       : out   std_logic;  -- true if an error was found during test
-    led       : out   std_logic_vector(15 downto 0);  -- dual seven-segment LEDs
-    heartBeat : out   std_logic  -- heartbeat status (usually sent to parallel port status pin)
+    clk_i       : in    std_logic;  -- main clock input from external clock source
+    sdRas_bo    : out   std_logic;      -- SDRAM RAS
+    sdCas_bo    : out   std_logic;      -- SDRAM CAS
+    sdWe_bo     : out   std_logic;      -- SDRAM write-enable
+    sdBs_o      : out   std_logic_vector(0 downto 0);  -- SDRAM bank-address
+    sdAddr_o    : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus
+    sdData_io   : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- data from SDRAM
+    progress_o  : out   std_logic_vector(1 downto 0);  -- test progress_o indicator
+    err_o       : out   std_logic;  -- true if an error was found during test
+    led_o       : out   std_logic_vector(15 downto 0);  -- dual seven-segment LEDs
+    heartBeat_o : out   std_logic  -- heartBeat_o status (usually sent to parallel port status pin)
     );
 end entity;
 
 architecture arch of TestBoardCore is
   constant HADDR_WIDTH_G : natural := Log2(END_ADDR_G-BEG_ADDR_G+1);
-  signal rst_i         : std_logic;               -- internal reset signal
-  signal divCnt        : unsigned(20 downto 0);   -- clock divider
+  signal rst_i           : std_logic;              -- internal reset signal
+  signal divCnt          : unsigned(20 downto 0);  -- clock divider
 
   -- signals that go through the SDRAM host-side interface
   signal begun      : std_logic;        -- SDRAM operation started indicator
@@ -124,7 +118,7 @@ architecture arch of TestBoardCore is
   signal rdPending  : std_logic;  -- read operation pending in SDRAM pipeline
 
   -- status signals from the memory tester
-  signal progress_i : std_logic_vector(1 downto 0);  -- internal test progress indicator
+  signal progress_i : std_logic_vector(1 downto 0);  -- internal test progress_o indicator
   signal err_i      : std_logic;        -- test error flag
 
 begin
@@ -134,11 +128,11 @@ begin
   -- because the reset counter starts at zero, and then gets reset after
   -- the counter reaches its upper threshold.
   ------------------------------------------------------------------------
-  process(clk)
+  process(clk_i)
     constant reset_dly_c : natural                        := 100;
     variable rst_cntr    : natural range 0 to reset_dly_c := 0;
   begin
-    if rising_edge(clk) then
+    if rising_edge(clk_i) then
       rst_i <= NO;
       if rst_cntr < reset_dly_c then
         rst_i    <= YES;
@@ -160,19 +154,19 @@ begin
         END_TEST_G   => END_TEST_G
         )
       port map(
-        clk       => clk,               -- master internal clock
-        rst       => rst_i,             -- reset
-        doAgain   => NO,                -- run the test once
-        begun     => earlyBegun,        -- SDRAM controller operation started
-        done      => rdDone,            -- SDRAM controller operation complete
-        dIn       => hDOut,  -- host-side data from SDRAM goes to memory tester
-        rdPending => rdPending,  -- tell the memory tester if the SDRAM has pending reads
-        rd        => rd,    -- host-side SDRAM read control from memory tester
-        wr        => wr,    -- host-side SDRAM write control from memory tester
-        addr      => hAddr,             -- host-side address from memory tester
-        dOut      => hDIn,  -- host-side data to SDRAM comes from memory tester
-        progress  => progress_i,        -- current phase of memory test
-        err       => err_i              -- memory test error flag
+        clk_i       => clk_i,           -- master internal clock
+        rst_i       => rst_i,           -- reset
+        doAgain_i   => NO,              -- run the test once
+        begun_i     => earlyBegun,      -- SDRAM controller operation started
+        done_i      => rdDone,          -- SDRAM controller operation complete
+        dIn_i       => hDOut,  -- host-side data from SDRAM goes to memory tester
+        rdPending_i => rdPending,  -- tell the memory tester if the SDRAM has pending reads
+        rd_o        => rd,  -- host-side SDRAM read control from memory tester
+        wr_o        => wr,  -- host-side SDRAM write control from memory tester
+        addr_o      => hAddr,           -- host-side address from memory tester
+        dOut_o      => hDIn,  -- host-side data to SDRAM comes from memory tester
+        progress_o  => progress_i,      -- current phase of memory test
+        err_o       => err_i            -- memory test error flag
         );
   end generate;
 
@@ -189,19 +183,19 @@ begin
         END_TEST_G   => END_TEST_G
         )
       port map(
-        clk       => clk,               -- master internal clock
-        rst       => rst_i,             -- reset
-        doAgain   => NO,                -- run the test once
-        begun     => begun,             -- SDRAM controller operation started
-        done      => done,              -- SDRAM controller operation complete
-        dIn       => hDOut,  -- host-side data from SDRAM goes to memory tester
-        rdPending => rdPending,  -- tell the memory tester if the SDRAM has pending reads
-        rd        => rd,    -- host-side SDRAM read control from memory tester
-        wr        => wr,    -- host-side SDRAM write control from memory tester
-        addr      => hAddr,             -- host-side address from memory tester
-        dOut      => hDIn,  -- host-side data to SDRAM comes from memory tester
-        progress  => progress_i,        -- current phase of memory test
-        err       => err_i              -- memory test error flag
+        clk_i       => clk_i,           -- master internal clock
+        rst_i       => rst_i,           -- reset
+        doAgain_i   => NO,              -- run the test once
+        begun_i     => begun,           -- SDRAM controller operation started
+        done_i      => done,            -- SDRAM controller operation complete
+        dIn_i       => hDOut,  -- host-side data from SDRAM goes to memory tester
+        rdPending_i => rdPending,  -- tell the memory tester if the SDRAM has pending reads
+        rd_o        => rd,  -- host-side SDRAM read control from memory tester
+        wr_o        => wr,  -- host-side SDRAM write control from memory tester
+        addr_o      => hAddr,           -- host-side address from memory tester
+        dOut_o      => hDIn,  -- host-side data to SDRAM comes from memory tester
+        progress_o  => progress_i,      -- current phase of memory test
+        err_o       => err_i            -- memory test error flag
         );
   end generate;
 
@@ -222,36 +216,32 @@ begin
       SADDR_WIDTH_G => SADDR_WIDTH_G
       )
     port map(
-      clk          => clk,  -- master clock from external clock source (unbuffered)
-      lock         => YES,  -- no DLLs, so frequency is always locked
-      rst          => rst_i,            -- reset
-      rd           => rd,   -- host-side SDRAM read control from memory tester
-      wr           => wr,   -- host-side SDRAM write control from memory tester
-      earlyOpBegun => earlyBegun,  -- early indicator that memory operation has begun
-      opBegun      => begun,   -- indicates memory read/write has begun
-      rdPending    => rdPending,   -- read operation to SDRAM is in progress
-      done         => done,    -- SDRAM memory read/write done indicator
-      rdDone       => rdDone,  -- indicates SDRAM memory read operation is done
-      hAddr        => hAddr,   -- host-side address from memory tester to SDRAM
-      hDIn         => hDIn,    -- test data pattern from memory tester to SDRAM
-      hDOut        => hDOut,            -- SDRAM data output to memory tester
-      status       => open,    -- SDRAM controller state (for diagnostics)
-      cke          => cke,              -- SDRAM clock enable
-      ce_n         => cs_n,             -- SDRAM chip-select
-      ras_b        => ras_b,            -- SDRAM RAS
-      cas_b        => cas_b,            -- SDRAM CAS
-      we_b         => we_b,             -- SDRAM write-enable
-      ba           => ba,               -- SDRAM bank address
-      sAddr        => sAddr,            -- SDRAM address
-      sData        => sData,            -- data to/from SDRAM
-      dqmh         => dqmh,             -- SDRAM DQMH
-      dqml         => dqml              -- SDRAM DQML
+      clk_i          => clk_i,  -- master clock from external clock source (unbuffered)
+      lock_i         => YES,   -- no DLLs, so frequency is always locked
+      rst_i          => rst_i,          -- reset
+      rd_i           => rd,  -- host-side SDRAM read control from memory tester
+      wr_i           => wr,  -- host-side SDRAM write control from memory tester
+      earlyOpBegun_o => earlyBegun,  -- early indicator that memory operation has begun
+      opBegun_o      => begun,  -- indicates memory read/write has begun
+      rdPending_o    => rdPending,  -- read operation to SDRAM is in progress_o
+      done_o         => done,  -- SDRAM memory read/write done indicator
+      rdDone_o       => rdDone,  -- indicates SDRAM memory read operation is done
+      hostAddr_i     => hAddr,  -- host-side address from memory tester to SDRAM
+      hostData_i     => hDIn,  -- test data pattern from memory tester to SDRAM
+      sdramData_o    => hDOut,          -- SDRAM data output to memory tester
+      status_o       => open,  -- SDRAM controller state (for diagnostics)
+      sdRas_bo       => sdRas_bo,       -- SDRAM RAS
+      sdCas_bo       => sdCas_bo,       -- SDRAM CAS
+      sdWe_bo        => sdWe_bo,        -- SDRAM write-enable
+      sdBs_o         => sdBs_o,         -- SDRAM bank address
+      sdAddr_o       => sdAddr_o,       -- SDRAM address
+      sdData_io      => sdData_io       -- data to/from SDRAM
       );
 
   ------------------------------------------------------------------------
   -- Indicate the phase of the memory tester on the segments of the 
-  -- seven-segment LED.  The phases of the memory test are
-  -- indicated as shown below (|=LED OFF; *=LED ON):
+  -- seven-segment led_o.  The phases of the memory test are
+  -- indicated as shown below (|=led_o OFF; *=led_o ON):
   -- 
   --       ----*           *****            *****           ******           ******
   --      |    *          |    *           |    *           *    *           *    |
@@ -261,34 +251,34 @@ begin
   --  Initialization  Writing pattern  Reading pattern    Memory test  or  Memory test
   --      Phase          to memory       from memory        passed           failed
   ------------------------------------------------------------------------
-  led <= "0000000000000110" when progress_i = "00" else  -- "1" during initialization
-         "0000000001011011" when progress_i = "01" else  -- "2" when writing to memory
-         "0000000001001111" when progress_i = "10" else  -- "3" when reading from memory
-         "0000000001111001" when err_i = YES       else  -- "E" if memory test failed
-         "0000000000111111";            -- "O" if memory test passed
+  led_o <= "0000000000000110" when progress_i = "00" else  -- "1" during initialization
+           "0000000001011011" when progress_i = "01" else  -- "2" when writing to memory
+           "0000000001001111" when progress_i = "10" else  -- "3" when reading from memory
+           "0000000001111001" when err_i = YES       else  -- "E" if memory test failed
+           "0000000000111111";          -- "O" if memory test passed
 
   ------------------------------------------------------------------------
   -- Generate some slow signals from the master clock.
   ------------------------------------------------------------------------
-  process(clk)
+  process(clk_i)
   begin
-    if rising_edge(clk) then
+    if rising_edge(clk_i) then
       divCnt <= divCnt+1;
     end if;
   end process;
 
   ------------------------------------------------------------------------
-  -- Send a heartbeat signal back to the PC to indicate
+  -- Send a heartBeat_o signal back to the PC to indicate
   -- the status of the memory test:
-  --   50% duty cycle -> test in progress
+  --   50% duty cycle -> test in progress_o
   --   75% duty cycle -> test passed
   --   25% duty cycle -> test failed
   ------------------------------------------------------------------------
-  heartBeat <= divCnt(16) when progress_i /= "11" else  -- test in progress
-               divCnt(16) or divCnt(15) when err_i = NO else  -- test passed
-               divCnt(16) and divCnt(15);  -- test failed                              
+  heartBeat_o <= divCnt(16) when progress_i /= "11" else  -- test in progress_o
+                 divCnt(16) or divCnt(15) when err_i = NO else  -- test passed
+                 divCnt(16) and divCnt(15);  -- test failed                              
 
-  progress <= progress_i;
-  err      <= err_i;
+  progress_o <= progress_i;
+  err_o      <= err_i;
 
 end architecture;

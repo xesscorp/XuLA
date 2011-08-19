@@ -1,5 +1,5 @@
-Release 11.5 Physical Synthesis Report L.70 (nt)
-Copyright (c) 1995-2009 Xilinx, Inc. All rights reserved.
+Release 13.1 Physical Synthesis Report O.40d (nt)
+Copyright (c) 1995-2011 Xilinx, Inc. All rights reserved.
 
 TABLE OF CONTENTS
   1) Physical Synthesis Options Summary
@@ -17,8 +17,10 @@ Timing-Driven Packing and Placement : ON
     Logic Optimization              : ON
     Register Duplication            : ON
 
+---- Intelligent clock gating       : OFF
+
 ---- Target Parameters
-Target Device                       : 3s200avq100-4
+Target Device                       : 3s50avq100-4
 
 =========================================================================
 
@@ -29,5 +31,5 @@ Target Device                       : 3s200avq100-4
 ---- Statistics
 No sequential optimizations have been performed.
 
-
-
+   Flops added for Enable Generation                       
+-------------------------

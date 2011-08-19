@@ -19,7 +19,7 @@
 
 ----------------------------------------------------------------------------------
 -- Flash upload/download via JTAG.
--- See userinstr_jtag.vhd and flashcntl.vhd for details of operation.
+-- See UserInstrJtag.vhd and FlashCntl.vhd for details of operation.
 --------------------------------------------------------------------
 
 
@@ -38,17 +38,17 @@ use UNISIM.VComponents.all;
 
 entity fintf_jtag is
   generic(
-    BASE_FREQ_G  : real    := 12.0;       -- base frequency in MHz
-    CLK_MUL_G    : natural := 25;         -- multiplier for base frequency
-    CLK_DIV_G    : natural := 3;          -- divider for base frequency
-    DATA_WIDTH_G : natural := 8;          -- data width of Flash chip
-    ADDR_WIDTH_G : natural := 24;         -- address width of Flash chip
-    BLOCK_SIZE_G : natural := 256  -- size of RAM block that buffers data programmed into Flash
+    BASE_FREQ_G  : real    := 12.0;       -- base frequency in MHz.
+    CLK_MUL_G    : natural := 25;         -- multiplier for base frequency.
+    CLK_DIV_G    : natural := 3;          -- divider for base frequency.
+    DATA_WIDTH_G : natural := 8;          -- data width of Flash chip.
+    ADDR_WIDTH_G : natural := 24;         -- address width of Flash chip.
+    BLOCK_SIZE_G : natural := 256  -- size of RAM block that buffers data programmed into Flash.
     );
   port(
-    fpgaClk : in    std_logic;  -- main clock input from external clock source
-    bs       : out   std_logic;
-    a        : inout std_logic_vector(10 downto 0)
+    fpgaClk_i : in    std_logic;  -- main clock input from external clock source.
+    sdBs_o    : out   std_logic;  -- SDRAM bank-select and serial Flash clock share this pin.
+    sdAddr_o  : inout std_logic_vector(10 downto 0) -- SDRAM address pins shared with serial Flash MOSI, MISO, CS pins.
     );
 end entity;
 
@@ -88,7 +88,7 @@ begin
   
   u0 : ClkGen
     generic map (BASE_FREQ_G => BASE_FREQ_G, CLK_MUL_G => CLK_MUL_G, CLK_DIV_G => CLK_DIV_G)
-    port map(I             => fpgaClk, O => clk);
+    port map(I             => fpgaClk_i, O => clk);
 
   -- Generate a reset signal for everything.  
   process(clk)
@@ -172,10 +172,10 @@ begin
       h_begun       => h_begun,
       h_busy        => h_busy,
       h_done        => h_done,
-      f_cs_n        => a(7),
-      sclk          => bs,
-      si            => a(10),  -- flash serial out goes to serial input of flash controller
-      so            => a(2)  -- flash serial input is driven by serial output of flash controller
+      f_cs_n        => sdAddr_o(7),
+      sclk          => sdBs_o,
+      si            => sdAddr_o(10),  -- flash serial out goes to serial input of flash controller
+      so            => sdAddr_o(2)  -- flash serial input is driven by serial output of flash controller
       );
 
 end architecture;

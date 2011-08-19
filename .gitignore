@@ -21,7 +21,6 @@
 *.pnx
 *.rpt
 *.svf
-*.bit
 *.syr
 *.vm6
 *.xml

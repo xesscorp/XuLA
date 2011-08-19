@@ -30,31 +30,41 @@ use work.ClkgenPckg.all;
 
 ---- Uncomment the following library declaration if instantiating
 ---- any Xilinx primitives in this code.
-library UNISIM;
-use UNISIM.VComponents.all;
+--library UNISIM;
+--use UNISIM.VComponents.all;
 
 
 entity counter is
   port (
-    fpgaClk : in  std_logic;              -- clock input
-    chan     : out std_logic_vector(25 downto 0)
+    fpgaClk_i : in  std_logic;          -- clock input
+    chan_io   : out std_logic_vector(31 downto 0)
     );
 end counter;
 
 
 architecture Behavioral of counter is
-  signal clk       : std_logic;
+  signal clk_s : std_logic;
+  signal cnt_r : std_logic_vector(25 downto 0);
 begin
 
-  u0 : ClkGen port map (I=>fpgaClk, O=>clk); 
+  -- Multiply the clock from 12 MHz up to 100 MHz.
+  u0 : ClkGen port map (I => fpgaClk_i, O => clk_s);
 
-  process(clk)
-    variable c : natural;
+  process(clk_s)
   begin
-    if rising_edge(clk) then
-      c := c + 1;
+    if rising_edge(clk_s) then
+      cnt_r <= cnt_r + 1;
     end if;
-    chan <= CONV_STD_LOGIC_VECTOR(c, chan'length);
   end process;
+
+  -- Map the counter bits to the prototyping header pins.
+  -- (This is complicated because some of the proto-header pins are input-only.)
+  chan_io(1 downto 0)   <= cnt_r(1 downto 0);
+  chan_io(8 downto 3)   <= cnt_r(7 downto 2);
+  chan_io(11 downto 10) <= cnt_r(9 downto 8);
+  chan_io(18 downto 13) <= cnt_r(15 downto 10);
+  chan_io(23 downto 20) <= cnt_r(19 downto 16);
+  chan_io(26 downto 25) <= cnt_r(21 downto 20);
+  chan_io(31 downto 28) <= cnt_r(25 downto 22);
 
 end Behavioral;

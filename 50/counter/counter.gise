@@ -15,15 +15,13 @@
 
   <!--                                                          -->
 
-  <!-- Copyright (c) 1995-2009 Xilinx, Inc.  All rights reserved. -->
+  <!-- Copyright (c) 1995-2011 Xilinx, Inc.  All rights reserved. -->
 
   <version xmlns="http://www.xilinx.com/XMLSchema">11.1</version>
 
   <sourceproject xmlns="http://www.xilinx.com/XMLSchema" xil_pn:fileType="FILE_XISE" xil_pn:name="counter.xise"/>
 
   <files xmlns="http://www.xilinx.com/XMLSchema">
-    <file xil_pn:fileType="FILE_CMD" xil_pn:name="_impact.cmd"/>
-    <file xil_pn:fileType="FILE_LOG" xil_pn:name="_impact.log"/>
     <file xil_pn:fileType="FILE_DIRECTORY" xil_pn:name="_ngo"/>
     <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/bitgen.xmsgs"/>
     <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/map.xmsgs"/>
@@ -31,11 +29,11 @@
     <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/par.xmsgs"/>
     <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/trce.xmsgs"/>
     <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/xst.xmsgs"/>
-    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BITGEN_REPORT" xil_pn:name="counter.bgn"/>
-    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BIT" xil_pn:name="counter.bit"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BITGEN_REPORT" xil_pn:name="counter.bgn" xil_pn:subbranch="FPGAConfiguration"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BIT" xil_pn:name="counter.bit" xil_pn:subbranch="FPGAConfiguration"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_NGDBUILD_LOG" xil_pn:name="counter.bld"/>
     <file xil_pn:fileType="FILE_CMD_LOG" xil_pn:name="counter.cmd_log"/>
-    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BITGEN_DRC" xil_pn:name="counter.drc"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BITGEN_DRC" xil_pn:name="counter.drc" xil_pn:subbranch="FPGAConfiguration"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_LSO" xil_pn:name="counter.lso"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_NCD" xil_pn:name="counter.ncd" xil_pn:subbranch="Par"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_NGC" xil_pn:name="counter.ngc"/>
@@ -48,14 +46,14 @@
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_XST_PROJECT" xil_pn:name="counter.prj"/>
     <file xil_pn:fileType="FILE_TRCE_MISC" xil_pn:name="counter.ptwx"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_XST_STX" xil_pn:name="counter.stx"/>
-    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_IMPACT_MISC" xil_pn:name="counter.svf"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_XST_REPORT" xil_pn:name="counter.syr"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_TIMING_TXT_REPORT" xil_pn:name="counter.twr" xil_pn:subbranch="Par"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_TIMING_XML_REPORT" xil_pn:name="counter.twx" xil_pn:subbranch="Par"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_UNROUTES" xil_pn:name="counter.unroutes" xil_pn:subbranch="Par"/>
-    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BITGEN_REPORT" xil_pn:name="counter.ut"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BITGEN_REPORT" xil_pn:name="counter.ut" xil_pn:subbranch="FPGAConfiguration"/>
     <file xil_pn:fileType="FILE_XPI" xil_pn:name="counter.xpi"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_XST" xil_pn:name="counter.xst"/>
+    <file xil_pn:fileType="FILE_HTML" xil_pn:name="counter_envsettings.html"/>
     <file xil_pn:fileType="FILE_NCD" xil_pn:name="counter_guide.ncd" xil_pn:origination="imported"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_MAP_REPORT" xil_pn:name="counter_map.map" xil_pn:subbranch="Map"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_MAP_REPORT" xil_pn:name="counter_map.mrp" xil_pn:subbranch="Map"/>
@@ -70,48 +68,49 @@
     <file xil_pn:fileType="FILE_FITTER_REPORT" xil_pn:name="counter_summary.xml"/>
     <file xil_pn:fileType="FILE_WEBTALK" xil_pn:name="counter_usage.xml"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_XST_PROJECT" xil_pn:name="counter_vhdl.prj"/>
-    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BCD" xil_pn:name="counter_xdb/cst.xbcd"/>
     <file xil_pn:fileType="FILE_XRPT" xil_pn:name="counter_xst.xrpt"/>
+    <file xil_pn:fileType="FILE_HTML" xil_pn:name="usage_statistics_webtalk.html"/>
+    <file xil_pn:fileType="FILE_LOG" xil_pn:name="webtalk.log"/>
+    <file xil_pn:fileType="FILE_FITTER_REPORT" xil_pn:name="webtalk_pn.xml"/>
+    <file xil_pn:fileType="FILE_DIRECTORY" xil_pn:name="xlnx_auto_0_xdb"/>
     <file xil_pn:fileType="FILE_DIRECTORY" xil_pn:name="xst"/>
   </files>
 
   <transforms xmlns="http://www.xilinx.com/XMLSchema">
-    <transform xil_pn:end_ts="1285105541" xil_pn:name="TRAN_copyInitialToXSTAbstractSynthesis" xil_pn:start_ts="1285105541">
+    <transform xil_pn:end_ts="1313085060" xil_pn:name="TRAN_copyInitialToXSTAbstractSynthesis" xil_pn:start_ts="1313085060">
+      <status xil_pn:value="SuccessfullyRun"/>
+    </transform>
+    <transform xil_pn:end_ts="1313085060" xil_pn:name="TRAN_schematicsToHdl" xil_pn:prop_ck="-8729763918949224053" xil_pn:start_ts="1313085060">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
     </transform>
-    <transform xil_pn:end_ts="1285105541" xil_pn:name="TRAN_schematicsToHdl" xil_pn:prop_ck="7061238933782622035" xil_pn:start_ts="1285105541">
+    <transform xil_pn:end_ts="1313085060" xil_pn:name="TRAN_regenerateCores" xil_pn:prop_ck="-6793389773453515191" xil_pn:start_ts="1313085060">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
     </transform>
-    <transform xil_pn:end_ts="1303787847" xil_pn:name="TRAN_regenerateCores" xil_pn:prop_ck="8378022829452757617" xil_pn:start_ts="1303787847">
+    <transform xil_pn:end_ts="1313085060" xil_pn:name="TRAN_SubProjectAbstractToPreProxy" xil_pn:start_ts="1313085060">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
     </transform>
-    <transform xil_pn:end_ts="1285105541" xil_pn:name="TRAN_SubProjectAbstractToPreProxy" xil_pn:start_ts="1285105541">
+    <transform xil_pn:end_ts="1313085060" xil_pn:name="TRAN_xawsTohdl" xil_pn:prop_ck="7776035805355712867" xil_pn:start_ts="1313085060">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
     </transform>
-    <transform xil_pn:end_ts="1285105541" xil_pn:name="TRAN_xawsTohdl" xil_pn:prop_ck="-9044832904953873877" xil_pn:start_ts="1285105541">
+    <transform xil_pn:end_ts="1313085060" xil_pn:name="TRAN_SubProjectPreToStructuralProxy" xil_pn:prop_ck="1430049303118697548" xil_pn:start_ts="1313085060">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
     </transform>
-    <transform xil_pn:end_ts="1285105541" xil_pn:name="TRAN_SubProjectPreToStructuralProxy" xil_pn:start_ts="1285105541">
+    <transform xil_pn:end_ts="1313085060" xil_pn:name="TRAN_platgen" xil_pn:prop_ck="-8039085299779493293" xil_pn:start_ts="1313085060">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
     </transform>
-    <transform xil_pn:end_ts="1303787847" xil_pn:name="TRAN_platgen" xil_pn:prop_ck="-8039085299779493293" xil_pn:start_ts="1303787847">
-      <status xil_pn:value="SuccessfullyRun"/>
-      <status xil_pn:value="ReadyToRun"/>
-    </transform>
-    <transform xil_pn:end_ts="1303787853" xil_pn:in_ck="7653033031718837225" xil_pn:name="TRANEXT_xstsynthesize_spartan3e" xil_pn:prop_ck="6266618070856379268" xil_pn:start_ts="1303787847">
+    <transform xil_pn:end_ts="1313085064" xil_pn:in_ck="-8279043733085026391" xil_pn:name="TRANEXT_xstsynthesize_spartan3e" xil_pn:prop_ck="6266618070856379268" xil_pn:start_ts="1313085060">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="WarningsGenerated"/>
       <status xil_pn:value="ReadyToRun"/>
       <status xil_pn:value="OutOfDateForOutputs"/>
       <status xil_pn:value="OutputChanged"/>
       <outfile xil_pn:name="_xmsgs/xst.xmsgs"/>
-      <outfile xil_pn:name="counter.cmd_log"/>
       <outfile xil_pn:name="counter.lso"/>
       <outfile xil_pn:name="counter.ngc"/>
       <outfile xil_pn:name="counter.ngr"/>
@@ -120,90 +119,71 @@
       <outfile xil_pn:name="counter.stx"/>
       <outfile xil_pn:name="counter.syr"/>
       <outfile xil_pn:name="counter.xst"/>
-      <outfile xil_pn:name="counter_summary.html"/>
       <outfile xil_pn:name="counter_vhdl.prj"/>
       <outfile xil_pn:name="counter_xst.xrpt"/>
+      <outfile xil_pn:name="webtalk_pn.xml"/>
       <outfile xil_pn:name="xst"/>
     </transform>
-    <transform xil_pn:end_ts="1290094955" xil_pn:in_ck="156947386046796876" xil_pn:name="TRAN_compileBCD2" xil_pn:prop_ck="-1232220867766372296" xil_pn:start_ts="1290094955">
+    <transform xil_pn:end_ts="1313085064" xil_pn:in_ck="-4025003372576038533" xil_pn:name="TRAN_compileBCD2" xil_pn:prop_ck="-1232220867766372296" xil_pn:start_ts="1313085064">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
-      <status xil_pn:value="OutOfDateForInputs"/>
-      <status xil_pn:value="OutOfDateForOutputs"/>
-      <status xil_pn:value="OutputChanged"/>
-      <outfile xil_pn:name="counter_xdb/cst.xbcd"/>
     </transform>
-    <transform xil_pn:end_ts="1290094961" xil_pn:in_ck="-1293128037861074030" xil_pn:name="TRANEXT_ngdbuild_FPGA" xil_pn:prop_ck="-7765846536659614401" xil_pn:start_ts="1290094955">
+    <transform xil_pn:end_ts="1313085066" xil_pn:in_ck="-6188323821025421919" xil_pn:name="TRANEXT_ngdbuild_FPGA" xil_pn:prop_ck="9009669978099357770" xil_pn:start_ts="1313085064">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="WarningsGenerated"/>
       <status xil_pn:value="ReadyToRun"/>
-      <status xil_pn:value="OutOfDateForInputs"/>
-      <status xil_pn:value="OutOfDateForProperties"/>
-      <status xil_pn:value="OutOfDateForPredecessor"/>
-      <status xil_pn:value="OutOfDateForOutputs"/>
-      <status xil_pn:value="InputAdded"/>
-      <status xil_pn:value="InputRemoved"/>
-      <status xil_pn:value="OutputChanged"/>
-      <status xil_pn:value="OutputRemoved"/>
+      <outfile xil_pn:name="_ngo"/>
+      <outfile xil_pn:name="_xmsgs/ngdbuild.xmsgs"/>
+      <outfile xil_pn:name="counter.bld"/>
+      <outfile xil_pn:name="counter.ngd"/>
+      <outfile xil_pn:name="counter_ngdbuild.xrpt"/>
     </transform>
-    <transform xil_pn:end_ts="1290094969" xil_pn:in_ck="-1242585931347347213" xil_pn:name="TRANEXT_map_spartan3" xil_pn:prop_ck="8244252997095731546" xil_pn:start_ts="1290094961">
-      <status xil_pn:value="SuccessfullyRun"/>
-      <status xil_pn:value="WarningsGenerated"/>
-      <status xil_pn:value="NotReadyToRun"/>
-      <status xil_pn:value="OutOfDateForInputs"/>
-      <status xil_pn:value="OutOfDateForProperties"/>
-      <status xil_pn:value="OutOfDateForPredecessor"/>
-      <status xil_pn:value="OutOfDateForOutputs"/>
-      <status xil_pn:value="InputRemoved"/>
-      <status xil_pn:value="OutputChanged"/>
-      <status xil_pn:value="OutputRemoved"/>
-    </transform>
-    <transform xil_pn:end_ts="1290094984" xil_pn:in_ck="548570531502834796" xil_pn:name="TRANEXT_par_spartan3" xil_pn:prop_ck="-4137209505576672566" xil_pn:start_ts="1290094969">
-      <status xil_pn:value="SuccessfullyRun"/>
-      <status xil_pn:value="WarningsGenerated"/>
-      <status xil_pn:value="NotReadyToRun"/>
-      <status xil_pn:value="OutOfDateForInputs"/>
-      <status xil_pn:value="OutOfDateForProperties"/>
-      <status xil_pn:value="OutOfDateForPredecessor"/>
-      <status xil_pn:value="OutOfDateForOutputs"/>
-      <status xil_pn:value="InputRemoved"/>
-      <status xil_pn:value="OutputRemoved"/>
-    </transform>
-    <transform xil_pn:end_ts="1290095186" xil_pn:in_ck="156947386046789251" xil_pn:name="TRANEXT_bitFile_spartan3a" xil_pn:prop_ck="-2772275912890163023" xil_pn:start_ts="1290095181">
-      <status xil_pn:value="SuccessfullyRun"/>
-      <status xil_pn:value="NotReadyToRun"/>
-      <status xil_pn:value="OutOfDateForInputs"/>
-      <status xil_pn:value="OutOfDateForPredecessor"/>
-      <status xil_pn:value="OutOfDateForOutputs"/>
-      <status xil_pn:value="InputRemoved"/>
-      <status xil_pn:value="OutputRemoved"/>
-    </transform>
-    <transform xil_pn:end_ts="1290095221" xil_pn:in_ck="156947386046776397" xil_pn:name="TRAN_impactProgrammingTool" xil_pn:prop_ck="931393531105821285" xil_pn:start_ts="1290095220">
+    <transform xil_pn:end_ts="1313085068" xil_pn:in_ck="-6188323821025421918" xil_pn:name="TRANEXT_map_spartan3" xil_pn:prop_ck="7237482619569386477" xil_pn:start_ts="1313085066">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
-      <status xil_pn:value="OutOfDateForInputs"/>
-      <status xil_pn:value="OutOfDateForPredecessor"/>
-      <status xil_pn:value="OutOfDateForOutputs"/>
-      <status xil_pn:value="InputRemoved"/>
-      <status xil_pn:value="OutputRemoved"/>
+      <outfile xil_pn:name="_xmsgs/map.xmsgs"/>
+      <outfile xil_pn:name="counter.pcf"/>
+      <outfile xil_pn:name="counter_map.map"/>
+      <outfile xil_pn:name="counter_map.mrp"/>
+      <outfile xil_pn:name="counter_map.ncd"/>
+      <outfile xil_pn:name="counter_map.ngm"/>
+      <outfile xil_pn:name="counter_map.xrpt"/>
+      <outfile xil_pn:name="counter_summary.xml"/>
+      <outfile xil_pn:name="counter_usage.xml"/>
     </transform>
-    <transform xil_pn:end_ts="1290095217" xil_pn:in_ck="156947386046776397" xil_pn:name="TRAN_genImpactFile" xil_pn:prop_ck="7115266323808781642" xil_pn:start_ts="1290095213">
+    <transform xil_pn:end_ts="1313085073" xil_pn:in_ck="7934876479131477435" xil_pn:name="TRANEXT_par_spartan3" xil_pn:prop_ck="4891759239423368658" xil_pn:start_ts="1313085068">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="WarningsGenerated"/>
+      <status xil_pn:value="ReadyToRun"/>
+      <outfile xil_pn:name="_xmsgs/par.xmsgs"/>
+      <outfile xil_pn:name="counter.ncd"/>
+      <outfile xil_pn:name="counter.pad"/>
+      <outfile xil_pn:name="counter.par"/>
+      <outfile xil_pn:name="counter.ptwx"/>
+      <outfile xil_pn:name="counter.unroutes"/>
+      <outfile xil_pn:name="counter.xpi"/>
+      <outfile xil_pn:name="counter_pad.csv"/>
+      <outfile xil_pn:name="counter_pad.txt"/>
+      <outfile xil_pn:name="counter_par.xrpt"/>
+    </transform>
+    <transform xil_pn:end_ts="1313085080" xil_pn:in_ck="156947386046789251" xil_pn:name="TRANEXT_bitFile_spartan3a" xil_pn:prop_ck="-2772275912890163023" xil_pn:start_ts="1313085073">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
-      <status xil_pn:value="OutOfDateForInputs"/>
-      <status xil_pn:value="OutOfDateForPredecessor"/>
-      <status xil_pn:value="OutOfDateForOutputs"/>
-      <status xil_pn:value="InputRemoved"/>
-      <status xil_pn:value="OutputRemoved"/>
+      <outfile xil_pn:name="_xmsgs/bitgen.xmsgs"/>
+      <outfile xil_pn:name="counter.bgn"/>
+      <outfile xil_pn:name="counter.bit"/>
+      <outfile xil_pn:name="counter.drc"/>
+      <outfile xil_pn:name="counter.ut"/>
+      <outfile xil_pn:name="usage_statistics_webtalk.html"/>
+      <outfile xil_pn:name="webtalk.log"/>
+      <outfile xil_pn:name="webtalk_pn.xml"/>
     </transform>
-    <transform xil_pn:end_ts="1290094984" xil_pn:in_ck="-7914143991159287057" xil_pn:name="TRAN_postRouteTrce" xil_pn:prop_ck="-4493182691236185209" xil_pn:start_ts="1290094981">
+    <transform xil_pn:end_ts="1313085073" xil_pn:in_ck="-6188323821025422050" xil_pn:name="TRAN_postRouteTrce" xil_pn:prop_ck="445577401284416186" xil_pn:start_ts="1313085072">
       <status xil_pn:value="SuccessfullyRun"/>
-      <status xil_pn:value="NotReadyToRun"/>
-      <status xil_pn:value="OutOfDateForInputs"/>
-      <status xil_pn:value="OutOfDateForPredecessor"/>
-      <status xil_pn:value="OutOfDateForOutputs"/>
-      <status xil_pn:value="InputRemoved"/>
-      <status xil_pn:value="OutputRemoved"/>
+      <status xil_pn:value="ReadyToRun"/>
+      <outfile xil_pn:name="_xmsgs/trce.xmsgs"/>
+      <outfile xil_pn:name="counter.twr"/>
+      <outfile xil_pn:name="counter.twx"/>
     </transform>
   </transforms>
 

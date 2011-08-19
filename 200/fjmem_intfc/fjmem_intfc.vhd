@@ -18,8 +18,8 @@
 ----------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------
--- SDRAM & flash upload/download via JTAG.
---------------------------------------------------------------------
+-- SDRAM & flash upload/download via JTAG with UrJtag.
+----------------------------------------------------------------------------------
 
 
 library IEEE;
@@ -38,21 +38,21 @@ use UNISIM.VComponents.all;
 
 entity fjmem_intfc is
   generic(
-    BASE_FREQ_G : real    := 12.0;        -- base frequency in MHz
-    CLK_MUL_G   : natural := 25;          -- multiplier for base frequency
-    CLK_DIV_G   : natural := 3            -- divider for base frequency
+    BASE_FREQ_G : real    := 12.0;      -- base frequency in MHz
+    CLK_MUL_G   : natural := 25;        -- multiplier for base frequency
+    CLK_DIV_G   : natural := 3          -- divider for base frequency
     );
   port(
-    fpgaClk     : in    std_logic;     -- main clock input
+    fpgaClk_i : in    std_logic;        -- main clock input
     ------------------- SDRAM interface --------------------
-    sdramClk    : out   std_logic;     -- clock to SDRAM
-    sdramClkFb : in    std_logic;     -- SDRAM clock comes back in
-    ras_b        : out   std_logic;     -- SDRAM RAS
-    cas_b        : out   std_logic;     -- SDRAM CAS
-    we_b         : out   std_logic;     -- SDRAM write-enable
-    bs           : out   std_logic;     -- SDRAM bank-address
-    a            : out   std_logic_vector(11 downto 0);  -- SDRAM address bus
-    d            : inout std_logic_vector(sdram_data_width_c-1 downto 0)  -- data bus to/from SDRAM
+    sdClk_o   : out   std_logic;        -- clock to SDRAM
+    sdClkFb_i : in    std_logic;        -- SDRAM clock comes back in
+    sdRas_bo  : out   std_logic;        -- SDRAM RAS
+    sdCas_bo  : out   std_logic;        -- SDRAM CAS
+    sdWe_bo   : out   std_logic;        -- SDRAM write-enable
+    sdBs_o    : out   std_logic;        -- SDRAM bank-address
+    sdAddr_o  : out   std_logic_vector(11 downto 0);  -- SDRAM address bus
+    sdData_io : inout std_logic_vector(sdram_data_width_c-1 downto 0)  -- data bus to/from SDRAM
     );
 end entity;
 
@@ -111,11 +111,11 @@ begin
       STARTUP_WAIT          => false)  --  Delay configuration DONE until DCM LOCK, TRUE/FALSE
     port map (
       RST   => '0',                     -- DCM asynchronous reset input
-      CLKIN => fpgaClk,           -- Clock input (from IBUFG, BUFG or DCM)
-      CLKFX => sdramClk                -- Clock to SDRAM
+      CLKIN => fpgaClk_i,          -- Clock input (from IBUFG, BUFG or DCM)
+      CLKFX => sdClk_o                  -- Clock to SDRAM
       );
 
-  clk <= sdramClkFb;  -- main clock is SDRAM clock fed back into FPGA
+  clk <= sdClkFb_i;  -- main clock is SDRAM clock fed back into FPGA
 
   -- generate a reset signal  
   process(clk)
@@ -201,31 +201,22 @@ begin
       HADDR_WIDTH_G => sdram_addr_width_c
       )
     port map(
-      clk          => clk,
-      lock         => YES,
-      rst          => reset,
-      rd           => sdram_hrd,
-      wr           => sdram_hwr,
-      rdPending    => open,
-      opBegun      => open,
-      earlyOpBegun => sdram_earlyOpBegun,
-      rdDone       => sdram_done,
-      done         => open,
-      hAddr        => sdram_haddr,
-      hDIn         => sdram_hdin,
-      hDOut        => sdram_hdout,
-      status       => open,
-      cke          => open,
-      ce_n         => open,
-      ras_b        => ras_b,
-      cas_b        => cas_b,
-      we_b         => we_b,
-      ba(0)        => bs,
-      ba(1)        => open,
-      sAddr        => a,
-      sData        => d,
-      dqmh         => open,
-      dqml         => open
+      clk_i          => clk,
+      lock_i         => YES,
+      rst_i          => reset,
+      rd_i           => sdram_hrd,
+      wr_i           => sdram_hwr,
+      earlyOpBegun_o => sdram_earlyOpBegun,
+      rdDone_o       => sdram_done,
+      hostAddr_i     => sdram_haddr,
+      hostData_i     => sdram_hdin,
+      sdramData_o    => sdram_hdout,
+      sdRas_bo       => sdRas_bo,
+      sdCas_bo       => sdCas_bo,
+      sdWe_bo        => sdWe_bo,
+      sdBs_o(0)      => sdBs_o,
+      sdAddr_o       => sdAddr_o,
+      sdData_io      => sdData_io
       );
 
 end architecture;

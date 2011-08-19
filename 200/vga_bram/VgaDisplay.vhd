@@ -22,7 +22,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all;
 
-package VgaDisplay_pckg is
+package VgaDisplayPckg is
 
   component VgaDisplay
     port (
@@ -44,8 +44,8 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all;
 use IEEE.STD_LOGIC_ARITH.all;
 use IEEE.STD_LOGIC_UNSIGNED.all;
-use work.VgaCtlr_pckg.all;
-use work.ClkGen_pckg.all;
+use work.VgaCtlrPckg.all;
+use work.ClkGenPckg.all;
 
 ---- Uncomment the following library declaration if instantiating
 ---- any Xilinx primitives in this code.

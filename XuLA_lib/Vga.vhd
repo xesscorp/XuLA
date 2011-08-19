@@ -39,13 +39,13 @@ package VgaPckg is
       OFFSET_G  : integer := 0  -- Number of pixels/lines to shift image right/down on screen.
       );
     port (
-      rst_p   : in  std_logic;          -- Asynchronous reset.
-      clk_p   : in  std_logic;          -- Master clock.
-      cke_p   : in  std_logic;          -- Clock-enable.
-      sync_bp : out std_logic;          -- Sync pulse.
-      gate_p  : out std_logic;  -- Single-clock pulse at start of sync pulse.
-      blank_p : out std_logic;          -- Blanking signal.
-      cnt_p   : out std_logic_vector    -- Output the timing counter value.
+      rst_i   : in  std_logic;          -- Asynchronous reset.
+      clk_i   : in  std_logic;          -- Master clock.
+      cke_i   : in  std_logic;          -- Clock-enable.
+      sync_bo : out std_logic;          -- Sync pulse.
+      gate_o  : out std_logic;  -- Single-clock pulse at start of sync pulse.
+      blank_o : out std_logic;          -- Blanking signal.
+      cnt_o   : out std_logic_vector    -- Output the timing counter value.
       );
   end component;
 
@@ -53,37 +53,37 @@ package VgaPckg is
     generic (
       PIXEL_FREQ_G      : real    := 50.0;  -- Pixel clock frequency (in MHz).
       PIXELS_PER_LINE_G : natural := 1024;  -- Pixels per video scan line.
-      LINES_PER_FRAME_G : natural := 512;  -- Scan lines per video frame.
+      LINES_PER_FRAME_G : natural := 512;   -- Scan lines per video frame.
       OFFSET_RIGHT_G    : integer := 0;  -- Offset of image to the right (pixels).
       OFFSET_DOWN_G     : integer := 0;  -- Offset of image downward (pixels).
-      FIT_TO_SCREEN_G   : boolean := true  -- Fit width x length to monitor screen.
+      FIT_TO_SCREEN_G   : boolean := false  -- Fit width x length to monitor screen.
       );
     port (
-      rst_p      : in  std_logic;       -- Asynchronous reset.
-      clk_p      : in  std_logic;       -- Master clock.
-      cke_p      : in  std_logic;  -- Clock enable (used to reduce master clock to pixel clock).
-      eol_p      : out std_logic;       -- End of vga scan line.
-      eof_p      : out std_logic;       -- End of vga frame.
-      lineCnt_p  : out std_logic_vector(11 downto 0);  -- Current video line within frame.
-      pixelCnt_p : out std_logic_vector(11 downto 0);  -- Current pixel within line.
-      hSync_bp   : out std_logic;       -- Horizontal sync pulse.
-      vSync_bp   : out std_logic;       -- Vertical sync pulse.
-      hBlank_p   : out std_logic;       -- Horizontal blanking signal.
-      vBlank_p   : out std_logic        -- Vertical blanking signal.
+      rst_i      : in  std_logic;       -- Asynchronous reset.
+      clk_i      : in  std_logic;       -- Master clock.
+      cke_i      : in  std_logic;  -- Clock enable (used to reduce master clock to pixel clock).
+      eol_o      : out std_logic;       -- End of vga scan line.
+      eof_o      : out std_logic;       -- End of vga frame.
+      pixelCnt_o : out std_logic_vector(Log2(PIXELS_PER_LINE_G)-1 downto 0);  -- Current pixel within line.
+      lineCnt_o  : out std_logic_vector(Log2(LINES_PER_FRAME_G)-1 downto 0);  -- Current video line within frame.
+      hSync_bo   : out std_logic;       -- Horizontal sync pulse.
+      vSync_bo   : out std_logic;       -- Vertical sync pulse.
+      hBlank_o   : out std_logic;       -- Horizontal blanking signal.
+      vBlank_o   : out std_logic        -- Vertical blanking signal.
       );
   end component;
 
   component FifoCc is
     port (
-      rst_p     : in  std_logic;        -- Asynchronous reset.
-      clk_p     : in  std_logic;        -- Master clock.
-      rd_p      : in  std_logic;  -- When true, read next value from FIFO.
-      wr_p      : in  std_logic;        -- When true, write value into FIFO.
-      dataIn_p  : in  std_logic_vector(15 downto 0);  -- Data bus into FIFO.
-      dataOut_p : out std_logic_vector(15 downto 0);  -- Data bus out of FIFO.
-      full_p    : out std_logic;        -- True when FIFO is full_p.
-      empty_p   : out std_logic;        -- True when FIFO is empty.
-      level_p   : out std_logic_vector(7 downto 0)  -- Number of entries in FIFO.
+      rst_i     : in  std_logic;        -- Asynchronous reset.
+      clk_i     : in  std_logic;        -- Master clock.
+      rd_i      : in  std_logic;  -- When true, read next value from FIFO.
+      wr_i      : in  std_logic;        -- When true, write value into FIFO.
+      dataIn_i  : in  std_logic_vector(15 downto 0);  -- Data bus into FIFO.
+      dataOut_o : out std_logic_vector(15 downto 0);  -- Data bus out of FIFO.
+      full_o    : out std_logic;        -- True when FIFO is full.
+      empty_o   : out std_logic;        -- True when FIFO is empty.
+      level_o   : out std_logic_vector(7 downto 0)  -- Number of entries in FIFO.
       );
   end component;
 
@@ -91,25 +91,22 @@ package VgaPckg is
     generic (
       FREQ_G            : real    := 50.0;  -- Master clock frequency (in MHz).
       CLK_DIV_G         : natural := 1;  -- FREQ_G / CLK_DIV_G = pixel clock.
-      PIXEL_WIDTH_G     : natural := 4;  -- Pixel width: 1, 2, 4, 8, or 16 bits.
       PIXELS_PER_LINE_G : natural := 1024;  -- Pixels per video scan line.
-      LINES_PER_FRAME_G : natural := 512;  -- Scan lines per video frame.
+      LINES_PER_FRAME_G : natural := 512;   -- Scan lines per video frame.
       OFFSET_RIGHT_G    : integer := 0;  -- Offset of image to the right (pixels).
       OFFSET_DOWN_G     : integer := 0;  -- Offset of image downward (pixels).
-      NUM_RGB_BITS_G    : natural := 2;  -- Width of R, G and B color output buses.
-      FIT_TO_SCREEN_G   : boolean := true  -- Fit width x length to monitor screen.
+      FIT_TO_SCREEN_G   : boolean := false  -- Fit width x length to monitor screen.
       );
     port (
-      rst_p         : in  std_logic;    -- Asynchronous reset.
-      clk_p         : in  std_logic;    -- Master clock.
-      wr_p          : in  std_logic;    -- Write-enable for pixel buffer.
-      pixelDataIn_p : in  std_logic_vector(15 downto 0);  -- Input databus to pixel buffer.
-      full_p        : out std_logic;    -- Pixel buffer full_p.
-      eof_p         : out std_logic;    -- End of vga frame.
-      r_p, g_p, b_p : out std_logic_vector(NUM_RGB_BITS_G-1 downto 0);  -- R,G,B color output buses.
-      hSync_bp      : out std_logic;    -- Horizontal sync pulse.
-      vSync_bp      : out std_logic;    -- Vertical sync pulse.
-      blank_p       : out std_logic     -- Blanking signal.
+      rst_i         : in  std_logic;    -- Asynchronous reset.
+      clk_i         : in  std_logic;    -- Master clock.
+      wr_i          : in  std_logic;    -- Write-enable for pixel buffer.
+      pixelDataIn_i : in  std_logic_vector(15 downto 0);  -- Input databus to pixel buffer.
+      full_o        : out std_logic;    -- Pixel buffer full.
+      eof_o         : out std_logic;    -- End of vga frame.
+      hSync_bo      : out std_logic;    -- Horizontal sync pulse.
+      vSync_bo      : out std_logic;    -- Vertical sync pulse.
+      rgb_o         : out std_logic_vector  -- Red, green, blue color output bus.
       );
   end component;
 
@@ -120,21 +117,20 @@ package VgaPckg is
       POSITION_INCR_G : natural := 1  -- Amount to increment position after each character or line.
       );
     port (
-      rst_p         : in  std_logic;    -- Synchronous reset.
-      clk_p         : in  std_logic;    -- Master clock.
-      cke_p         : in  std_logic;    -- Clock enable.
-      position_p    : out std_logic_vector(Log2(TEXT_SIZE_G)-1 downto 0);  -- On-screen position of character being displayed.
-      subPosition_p : out std_logic_vector(Log2(CHAR_SIZE_G)-1 downto 0);  -- Current pixel position within character being displayed.
-      newPosition_p : out std_logic  -- Single-clock pulse when position changes.
+      rst_i         : in  std_logic;    -- Synchronous reset.
+      clk_i         : in  std_logic;    -- Master clock.
+      cke_i         : in  std_logic;    -- Clock enable.
+      position_o    : out std_logic_vector(Log2(TEXT_SIZE_G)-1 downto 0);  -- On-screen position of character being displayed.
+      subPosition_o : out std_logic_vector(Log2(CHAR_SIZE_G)-1 downto 0);  -- Current pixel position within character being displayed.
+      newPosition_o : out std_logic  -- Single-clock pulse when position changes.
       );
   end component;
 
   component TextVga is
     generic (
-      FREQ_G            : real    := 50.0;  -- Master clock frequency (in MHz).
-      CLK_DIV_G         : natural := 1;    -- FREQ_G / CLK_DIV_G = pixel clock.
-      CHAR_WIDTH_G      : natural := 8;    -- Character width in pixels.
-      CHAR_HEIGHT_G     : natural := 8;    -- Character height in lines.
+      FREQ_G          : real    := 50.0;  -- Master clock frequency (in MHz).
+      CLK_DIV_G       : natural := 1;   -- FREQ_G / CLK_DIV_G = pixel clock.
+      CHAR_HEIGHT_G   : natural := 8;   -- Character height in lines.
       NUM_TEXT_COLS_G : natural := 80;  -- Width of text screen in characters.
       NUM_TEXT_ROWS_G : natural := 25;  -- Height of text screen in characters.
       OFFSET_RIGHT_G  : integer := 0;  -- Offset of image to the right in pixels.
@@ -142,15 +138,15 @@ package VgaPckg is
       FIT_TO_SCREEN_G : boolean := false  -- Fit width x length to monitor screen.
       );
     port (
-      rst_p     : in  std_logic;        -- Reset.
-      clk_p     : in  std_logic;        -- Master clock.
-      hSync_bp  : out std_logic;        -- Active-low horizontal (line) sync.
-      vSync_bp  : out std_logic;        -- Active-low vertical (frame) sync.
-      rgb_p     : out std_logic_vector(2 downto 0);  -- Red, green, blue colors.
-      ramAddr_p : out std_logic_vector(10 downto 0);  -- Address to video RAM containing text char codes.
-      ramData_p : in  std_logic_vector(7 downto 0);  -- Char code from video RAM.
-      romAddr_p : out std_logic_vector(11 downto 0);  -- Address to character generator ROM.
-      romData_p : in  std_logic_vector(CHAR_WIDTH_G-1 downto 0)  -- Row of character pixels from ROM.
+      rst_i            : in  std_logic;   -- Reset.
+      clk_i            : in  std_logic;   -- Master clock.
+      charAddr_o       : out std_logic_vector;  -- Address to video RAM containing text char codes.
+      charCode_i       : in  std_logic_vector;  -- Char code from video RAM.
+      charBitmapAddr_o : out std_logic_vector;  -- Address to character generator ROM.
+      charBitmapRow_i  : in  std_logic_vector;  -- Row of character pixels from ROM.
+      hSync_bo         : out std_logic;   -- Horizontal sync pulse.
+      vSync_bo         : out std_logic;   -- Vertical sync pulse.
+      rgb_o            : out std_logic_vector  -- Red, green, blue color output bus.
       );
   end component;
 
@@ -182,13 +178,13 @@ entity SyncGen is
     OFFSET_G  : integer := 0  -- Number of pixels/lines to shift image right/down on screen.
     );
   port (
-    rst_p   : in  std_logic;            -- Asynchronous reset.
-    clk_p   : in  std_logic;            -- Master clock.
-    cke_p   : in  std_logic;            -- Clock-enable.
-    sync_bp : out std_logic;            -- Sync pulse.
-    gate_p  : out std_logic;  -- Single-clock pulse at start of sync pulse.
-    blank_p : out std_logic;            -- Blanking signal.
-    cnt_p   : out std_logic_vector      -- Output the timing counter value.
+    rst_i   : in  std_logic;            -- Asynchronous reset.
+    clk_i   : in  std_logic;            -- Master clock.
+    cke_i   : in  std_logic;            -- Clock-enable.
+    sync_bo : out std_logic;            -- Sync pulse.
+    gate_o  : out std_logic;  -- Single-clock pulse at start of sync pulse.
+    blank_o : out std_logic;            -- Blanking signal.
+    cnt_o   : out std_logic_vector      -- Output the timing counter value.
     );
 end entity;
 
@@ -200,19 +196,19 @@ architecture arch of SyncGen is
   signal cnt_r          : natural range 0 to CYC_PERIOD_C-1;  -- Counter for timing sync pulse waveform.
 begin
 
-  process(rst_p, clk_p)
+  process(rst_i, clk_i)
   begin
-    if rst_p = YES then
+    if rst_i = YES then
       cnt_r   <= 0;
-      sync_bp <= HI;
-      gate_p  <= NO;
-      blank_p <= NO;
+      sync_bo <= HI;
+      gate_o  <= NO;
+      blank_o <= NO;
 
-    elsif rising_edge(clk_p) then
+    elsif rising_edge(clk_i) then
 
-      gate_p <= NO;
+      gate_o <= NO;  -- This insures gate_o is only a single clock cycle in duration.
 
-      if cke_p = YES then
+      if cke_i = YES then
 
         -- Increment counter and wrap around to zero at end of period.
         if cnt_r = CYC_PERIOD_C-1 then
@@ -224,17 +220,17 @@ begin
         -- Generate sync pulse within waveform period.
         -- The sync signal can be retarded or advanced to offset the displayed pixels on the screen.
         if cnt_r = (CYC_START_C-OFFSET_G-1) mod CYC_PERIOD_C then
-          sync_bp <= LO;
-          gate_p  <= YES;  -- Generate a single-cycle gate signal at start of sync pulse.
+          sync_bo <= LO;
+          gate_o  <= YES;  -- Generate a single-cycle gate signal at start of sync pulse.
         elsif cnt_r = (CYC_END_C-OFFSET_G-1) mod CYC_PERIOD_C then
-          sync_bp <= HI;
+          sync_bo <= HI;
         end if;
 
-        -- Generate blank_p signal after initial visible period.
+        -- Generate blank_o signal after initial visible period.
         if cnt_r = VISIBLE_G - 1 then
-          blank_p <= YES;
-        elsif cnt_r = OFFSET_G then
-          blank_p <= NO;
+          blank_o <= YES;
+        elsif cnt_r = CYC_PERIOD_C-1 then
+          blank_o <= NO;
         end if;
 
       end if;
@@ -242,7 +238,7 @@ begin
   end process;
 
 -- output counter value
-  cnt_p <= CONV_STD_LOGIC_VECTOR(cnt_r, cnt_p'length);
+  cnt_o <= CONV_STD_LOGIC_VECTOR(cnt_r, cnt_o'length);
 
 end architecture;
 
@@ -265,23 +261,23 @@ entity HVSyncGen is
   generic (
     PIXEL_FREQ_G      : real    := 50.0;  -- Pixel clock frequency (in MHz).
     PIXELS_PER_LINE_G : natural := 1024;  -- Pixels per video scan line.
-    LINES_PER_FRAME_G : natural := 512;  -- Scan lines per video frame.
+    LINES_PER_FRAME_G : natural := 512;   -- Scan lines per video frame.
     OFFSET_RIGHT_G    : integer := 0;  -- Offset of image to the right (pixels).
     OFFSET_DOWN_G     : integer := 0;   -- Offset of image downward (pixels).
-    FIT_TO_SCREEN_G   : boolean := true  -- Fit width x length to monitor screen.
+    FIT_TO_SCREEN_G   : boolean := false  -- Fit width x length to monitor screen.
     );
   port (
-    rst_p      : in  std_logic;         -- Asynchronous reset.
-    clk_p      : in  std_logic;         -- Master clock.
-    cke_p      : in  std_logic;  -- Clock enable (used to reduce master clock to pixel clock).
-    eol_p      : out std_logic;         -- End of vga scan line.
-    eof_p      : out std_logic;         -- End of vga frame.
-    lineCnt_p  : out std_logic_vector(11 downto 0);  -- Current video line within frame.
-    pixelCnt_p : out std_logic_vector(11 downto 0);  -- Current pixel within line.
-    hSync_bp   : out std_logic;         -- Horizontal sync pulse.
-    vSync_bp   : out std_logic;         -- Vertical sync pulse.
-    hBlank_p   : out std_logic;         -- Horizontal blanking signal.
-    vBlank_p   : out std_logic          -- Vertical blanking signal.
+    rst_i      : in  std_logic;         -- Asynchronous reset.
+    clk_i      : in  std_logic;         -- Master clock.
+    cke_i      : in  std_logic;  -- Clock enable (used to reduce master clock to pixel clock).
+    eol_o      : out std_logic;         -- End of vga scan line.
+    eof_o      : out std_logic;         -- End of vga frame.
+    pixelCnt_o : out std_logic_vector(Log2(PIXELS_PER_LINE_G)-1 downto 0);  -- Current pixel within line.
+    lineCnt_o  : out std_logic_vector(Log2(LINES_PER_FRAME_G)-1 downto 0);  -- Current video line within frame.
+    hSync_bo   : out std_logic;         -- Horizontal sync pulse.
+    vSync_bo   : out std_logic;         -- Vertical sync pulse.
+    hBlank_o   : out std_logic;         -- Horizontal blanking signal.
+    vBlank_o   : out std_logic          -- Vertical blanking signal.
     );
 end entity;
 
@@ -309,13 +305,13 @@ begin
       OFFSET_G  => OFFSET_RIGHT_G       -- Rightward image offset.
       )
     port map (
-      rst_p   => rst_p,
-      clk_p   => clk_p,                 -- Master clock.
-      cke_p   => cke_p,  -- A new pixel is output whenever the clock is enabled.
-      sync_bp => hSync_bp,              -- Horizontal sync.
-      gate_p  => eol_s,  -- Send gate signal to increment vertical sync pulse generator once per scan line.
-      blank_p => hBlank_p,              -- Blanking signal within a scan line.
-      cnt_p   => pixelCnt_p             -- Current pixel within the scan line.
+      rst_i   => rst_i,
+      clk_i   => clk_i,                 -- Master clock.
+      cke_i   => cke_i,  -- A new pixel is output whenever the clock is enabled.
+      sync_bo => hSync_bo,              -- Horizontal sync.
+      gate_o  => eol_s,  -- Send gate signal to increment vertical sync pulse generator once per scan line.
+      blank_o => hBlank_o,              -- Blanking signal within a scan line.
+      cnt_o   => pixelCnt_o             -- Current pixel within the scan line.
       );
 
   UVSync : SyncGen
@@ -328,16 +324,16 @@ begin
       OFFSET_G  => OFFSET_DOWN_G        -- Downward image offset.
       )
     port map (
-      rst_p   => rst_p,
-      clk_p   => clk_p,                 -- Master clock.
-      cke_p   => eol_s,  -- Enable clock once per horizontal scan line.
-      sync_bp => vSync_bp,              -- Vertical sync.
-      gate_p  => eof_p,  -- Indicate the end of a complete frame.
-      blank_p => vBlank_p,              -- Blanking signal within a frame.
-      cnt_p   => lineCnt_p              -- Current scan line within a frame.
+      rst_i   => rst_i,
+      clk_i   => clk_i,                 -- Master clock.
+      cke_i   => eol_s,  -- Enable clock once per horizontal scan line.
+      sync_bo => vSync_bo,              -- Vertical sync.
+      gate_o  => eof_o,  -- Indicate the end of a complete frame.
+      blank_o => vBlank_o,              -- Blanking signal within a frame.
+      cnt_o   => lineCnt_o              -- Current scan line within a frame.
       );
 
-  eol_p <= eol_s;
+  eol_o <= eol_s;
 
 end architecture;
 
@@ -356,15 +352,15 @@ use work.CommonPckg.all;
 
 entity FifoCc is
   port (
-    rst_p     : in  std_logic;          -- Asynchronous reset.
-    clk_p     : in  std_logic;          -- Master clock.
-    rd_p      : in  std_logic;  -- When true, read next value from FIFO.
-    wr_p      : in  std_logic;          -- When true, write value into FIFO.
-    dataIn_p  : in  std_logic_vector(15 downto 0);  -- Data bus into FIFO.
-    dataOut_p : out std_logic_vector(15 downto 0);  -- Data bus out of FIFO.
-    full_p    : out std_logic;          -- True when FIFO is full_p.
-    empty_p   : out std_logic;          -- True when FIFO is empty.
-    level_p   : out std_logic_vector(7 downto 0)  -- Number of entries in FIFO.
+    rst_i     : in  std_logic;          -- Asynchronous reset.
+    clk_i     : in  std_logic;          -- Master clock.
+    rd_i      : in  std_logic;  -- When true, read next value from FIFO.
+    wr_i      : in  std_logic;          -- When true, write value into FIFO.
+    dataIn_i  : in  std_logic_vector(15 downto 0);  -- Data bus into FIFO.
+    dataOut_o : out std_logic_vector(15 downto 0);  -- Data bus out of FIFO.
+    full_o    : out std_logic;          -- True when FIFO is full.
+    empty_o   : out std_logic;          -- True when FIFO is empty.
+    level_o   : out std_logic_vector(7 downto 0)  -- Number of entries in FIFO.
     );
 end entity;
 
@@ -384,29 +380,29 @@ begin
       addra => rdAddr_r,
       addrb => wrAddr_r,
       dia   => (others => '0'),
-      dib   => dataIn_p,
+      dib   => dataIn_i,
       wea   => NO,
       web   => YES,
-      clka  => clk_p,
-      clkb  => clk_p,
+      clka  => clk_i,
+      clkb  => clk_i,
       rsta  => NO,
       rstb  => NO,
       ena   => rdAllow_s,
       enb   => wrAllow_s,
-      doa   => dataOut_p
+      doa   => dataOut_o
       );
 
   -- Allow read and write of FIFO under these conditions.         
-  rdAllow_s <= rd_p and not empty_s;
-  wrAllow_s <= wr_p and not full_s;
+  rdAllow_s <= rd_i and not empty_s;
+  wrAllow_s <= wr_i and not full_s;
 
-  process (clk_p, rst_p)
+  process (clk_i, rst_i)
   begin
-    if rst_p = YES then
+    if rst_i = YES then
       rdAddr_r <= (others => ZERO);
       wrAddr_r <= (others => ZERO);
       level_r  <= (others => ZERO);
-    elsif rising_edge(clk_p) then
+    elsif rising_edge(clk_i) then
       if rdAllow_s = YES then
         rdAddr_r <= rdAddr_r + ONE;
       end if;
@@ -422,10 +418,10 @@ begin
   end process;
 
   full_s  <= YES when level_r = "11111111" else NO;
-  full_p  <= full_s;
+  full_o  <= full_s;
   empty_s <= YES when level_r = "00000000" else NO;
-  empty_p <= empty_s;
-  level_p <= level_r;
+  empty_o <= empty_s;
+  level_o <= level_r;
 
 end architecture;
 
@@ -438,6 +434,7 @@ end architecture;
 library IEEE, UNISIM;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
+use IEEE.std_logic_arith.all;
 use IEEE.std_logic_unsigned.all;
 use UNISIM.vcomponents.all;
 use work.CommonPckg.all;
@@ -447,59 +444,57 @@ entity PixelVga is
   generic (
     FREQ_G            : real    := 50.0;  -- Master clock frequency (in MHz).
     CLK_DIV_G         : natural := 1;   -- FREQ_G / CLK_DIV_G = pixel clock.
-    PIXEL_WIDTH_G     : natural := 4;   -- Pixel width: 1, 2, 4, 8, or 16 bits.
     PIXELS_PER_LINE_G : natural := 1024;  -- Pixels per video scan line.
-    LINES_PER_FRAME_G : natural := 512;  -- Scan lines per video frame.
+    LINES_PER_FRAME_G : natural := 512;   -- Scan lines per video frame.
     OFFSET_RIGHT_G    : integer := 0;  -- Offset of image to the right (pixels).
     OFFSET_DOWN_G     : integer := 0;   -- Offset of image downward (pixels).
-    NUM_RGB_BITS_G    : natural := 2;  -- Width of R, G and B color output buses.
-    FIT_TO_SCREEN_G   : boolean := true  -- Fit width x length to monitor screen.
+    FIT_TO_SCREEN_G   : boolean := false  -- Fit width x length to monitor screen.
     );
   port (
-    rst_p         : in  std_logic;      -- Asynchronous reset.
-    clk_p         : in  std_logic;      -- Master clock.
-    wr_p          : in  std_logic;      -- Write-enable for pixel buffer.
-    pixelDataIn_p : in  std_logic_vector(15 downto 0);  -- Input databus to pixel buffer.
-    full_p        : out std_logic;      -- Pixel buffer full_p.
-    eof_p         : out std_logic;      -- End of vga frame.
-    r_p, g_p, b_p : out std_logic_vector(NUM_RGB_BITS_G-1 downto 0);  -- R,G,B color output buses.
-    hSync_bp      : out std_logic;      -- Horizontal sync pulse.
-    vSync_bp      : out std_logic;      -- Vertical sync pulse.
-    blank_p       : out std_logic       -- Blanking signal.
+    rst_i         : in  std_logic;      -- Asynchronous reset.
+    clk_i         : in  std_logic;      -- Master clock.
+    wr_i          : in  std_logic;      -- Write-enable for pixel buffer.
+    pixelDataIn_i : in  std_logic_vector(15 downto 0);  -- Input databus to pixel buffer.
+    full_o        : out std_logic;      -- Pixel buffer full.
+    eof_o         : out std_logic;      -- End of vga frame.
+    hSync_bo      : out std_logic;      -- Horizontal sync pulse.
+    vSync_bo      : out std_logic;      -- Vertical sync pulse.
+    rgb_o         : out std_logic_vector  -- Red, green, blue color output bus.
     );
 end entity;
 
 
 architecture arch of PixelVga is
+  constant COLOR_DEPTH_C          : natural := rgb_o'length;
+  constant PIXEL_WIDTH_C          : natural := 2**Log2(COLOR_DEPTH_C);
   constant PIXEL_FREQ_C           : real    := FREQ_G / real(CLK_DIV_G);  -- Pixel drawing rate.
   signal clkDivCnt_r              : natural range 0 to CLK_DIV_G;  -- Clock divider counter.
   signal cke_r                    : std_logic;  -- Clock enable pulses once every CLK_DIV_G clocks.
-  signal lineCnt_s                : std_logic_vector(11 downto 0);  -- Current video line.
-  signal pixelCnt_s               : std_logic_vector(11 downto 0);  -- Current pixel within line.
+  signal pixelCnt_s               : std_logic_vector(Log2(PIXELS_PER_LINE_G)-1 downto 0);  -- Current pixel within line.
+  signal lineCnt_s                : std_logic_vector(Log2(LINES_PER_FRAME_G)-1 downto 0);  -- Current video line.
   signal fifoRst_s                : std_logic;  -- Reset for pixel buffer.
   signal fifoLevel_s              : std_logic_vector(7 downto 0);  -- Number of entries in pixel buffer.
   signal eof_s                    : std_logic;  -- Pulses on end-of-frame.
   signal hBlank_s                 : std_logic;  -- High during horizontal blanking interval.
   signal vBlank_s                 : std_logic;  -- High during vertical blanking interval.
   signal visible_s                : std_logic;  -- High during visible portion of screen display.
-  constant PIX_PROC_DELAY_C       : natural := 3;  -- Time delay to read a pixel from the FIFO and colormap it.
-  signal hSync_x, hSync_r         : std_logic_vector(PIX_PROC_DELAY_C downto 1);  -- Horizontal sync delay.
-  signal blank_x, blank_r         : std_logic_vector(PIX_PROC_DELAY_C downto 1);  -- Horizontal blanking delay.
+  constant PIX_PROC_DELAY_C       : natural := 2;  -- Time delay to read a pixel from the FIFO and colormap it.
+  signal hSync_x, hSync_r         : std_logic_vector(PIX_PROC_DELAY_C downto 1);  -- Horizontal sync delay line.
+  signal blank_x, blank_r         : std_logic_vector(PIX_PROC_DELAY_C downto 1);  -- Blanking delay line.
   signal rd_x, rd_r               : std_logic;  -- Pixel buffer read control signal.
   signal ckeRd_s                  : std_logic;  -- Clock-gated pixel buffer control read signal.
-  signal pixel_s                  : std_logic_vector(PIXEL_WIDTH_G-1 downto 0);  -- 
-  signal pixelData_x, pixelData_r : std_logic_vector(15 downto 0);
-  signal pixelDataOut_s           : std_logic_vector(15 downto 0);
-  signal rgb_x, rgb_r             : std_logic_vector(3*NUM_RGB_BITS_G-1 downto 0);
+  signal pixelDataOut_s           : std_logic_vector(pixelDataIn_i'range);  -- Output data from pixel buffer.
+  signal pixelData_x, pixelData_r : std_logic_vector(pixelDataIn_i'range);  -- Shift register for pixel buffer data.
+  signal rgb_x, rgb_r             : std_logic_vector(rgb_o'range);  -- Pixel output register.
 begin
 
   -- Clock divider for reducing the pixel clock rate.
-  process(clk_p, rst_p)
+  process(clk_i, rst_i)
   begin
-    if rst_p = YES then
+    if rst_i = YES then
       clkDivCnt_r <= 0;
       cke_r       <= YES;
-    elsif rising_edge(clk_p) then
+    elsif rising_edge(clk_i) then
       if clkDivCnt_r = CLK_DIV_G-1 then
         clkDivCnt_r <= 0;
         cke_r       <= YES;  -- Pulse clock enable once every CLK_DIV_G cycles.
@@ -514,17 +509,17 @@ begin
   ckeRd_s <= rd_x and cke_r;
   fifo : FifoCc
     port map (
-      clk_p     => clk_p,
-      rd_p      => ckeRd_s,
-      wr_p      => wr_p,
-      dataIn_p  => pixelDataIn_p,
-      rst_p     => fifoRst_s,
-      dataOut_p => pixelDataOut_s,
-      full_p    => open,
-      empty_p   => open,
-      level_p   => fifoLevel_s
+      clk_i     => clk_i,
+      rd_i      => ckeRd_s,
+      wr_i      => wr_i,
+      dataIn_i  => pixelDataIn_i,
+      rst_i     => fifoRst_s,
+      dataOut_o => pixelDataOut_s,
+      full_o    => open,
+      empty_o   => open,
+      level_o   => fifoLevel_s
       );
-  full_p <= YES when fifoLevel_s(7 downto 3) = "11111" else NO;
+  full_o <= YES when fifoLevel_s(7 downto 3) = "11111" else NO;
 
   -- Horizontal & vertical sync generator.
   UHVSyncGen : HVSyncGen
@@ -537,124 +532,70 @@ begin
       FIT_TO_SCREEN_G   => FIT_TO_SCREEN_G
       )
     port map(
-      rst_p      => rst_p,
-      clk_p      => clk_p,
-      cke_p      => cke_r,
-      eof_p      => eof_s,
-      pixelCnt_p => pixelCnt_s,
-      hSync_bp   => hSync_x(1),         -- Send pulse through delay line.
-      vSync_bp   => vSync_bp,
-      vBlank_p   => vBlank_s,
-      hBlank_p   => hBlank_s
+      rst_i      => rst_i,
+      clk_i      => clk_i,
+      cke_i      => cke_r,
+      eof_o      => eof_s,
+      pixelCnt_o => pixelCnt_s,
+      hSync_bo   => hSync_x(1),         -- Send pulse through delay line.
+      vSync_bo   => vSync_bo,
+      vBlank_o   => vBlank_s,
+      hBlank_o   => hBlank_s
       );
+  eof_o      <= eof_s;
   blank_x(1) <= vBlank_s or hBlank_s;  -- Send blanking signal through delay line.
   visible_s  <= not vBlank_s and not hBlank_s;
 
-  fifoRst_s <= eof_s or rst_p;  -- Clear the contents of the pixel buffer at the end of every frame.
+  fifoRst_s <= eof_s or rst_i;  -- Clear the contents of the pixel buffer at the end of every frame.
 
-  -- Pass the horiz. and vert. syncs and blanking signal through delay lines to compensate for the
+  -- Pass the horiz. sync and blanking signal through delay lines to compensate for the
   -- processing delays incurred by the pixel data.
   hSync_x(hSync_x'high downto 2) <= hSync_r(hSync_r'high-1 downto 1);
-  hSync_bp                       <= hSync_r(hSync_r'high);
+  hSync_bo                       <= hSync_r(hSync_r'high);
   blank_x(blank_x'high downto 2) <= blank_r(blank_r'high-1 downto 1);
-  blank_p                        <= blank_r(blank_r'high);
 
   -- Get the current pixel from the word of pixel data or read more pixel data from the buffer.
   process(visible_s, pixelDataOut_s, pixelData_r, rd_r, pixelCnt_s)
+    variable cntMask_v : std_logic_vector(pixelCnt_s'range);
   begin
-    rd_x <= NO;  -- By default, don't read next word of pixel data from the buffer.
 
-    -- Shift pixel data depending on its width so the next pixel is in the LSBs of the pixel data shift register.
-    case PIXEL_WIDTH_G is
-      when 1 =>                         -- 1-bit pixels, 16 per pixel data word
-        if (visible_s = YES) and (pixelCnt_s(3 downto 0) = 0) then
-          rd_x <= YES;  -- Read new pixel data from buffer every 16 clocks during visible portion of scan line.
-        end if;
-        pixelData_x <= "0" & pixelData_r(15 downto 1);  -- Left-shift pixel data to move next pixel to LSB.
-      when 2 =>                         -- 2-bit pixels, 8 per pixel data word.
-        if (visible_s = YES) and (pixelCnt_s(2 downto 0) = 0) then
-          rd_x <= YES;  -- Read new pixel data from buffer every 8 clocks during visible portion of scan line.
-        end if;
-        pixelData_x <= "00" & pixelData_r(15 downto 2);  -- Left-shift pixel data to move next pixel to LSB.
-      when 4 =>                         -- 4-bit pixels, 4 per pixel data word.
-        if (visible_s = YES) and (pixelCnt_s(1 downto 0) = 0) then
-          rd_x <= YES;  -- Read new pixel data from buffer every 4 clocks during visible portion of scan line.
-        end if;
-        pixelData_x <= "0000" & pixelData_r(15 downto 4);  -- Left-shift pixel data to move next pixel to LSB. 
-      when 8 =>                         -- 8-bit pixels, 2 per pixel data word
-        if (visible_s = YES) and (pixelCnt_s(0 downto 0) = 0) then
-          rd_x <= YES;  -- Read new pixel data from buffer every 2 clocks during visible portion of scan line.
-        end if;
-        pixelData_x <= "00000000" & pixelData_r(15 downto 8);  -- Left-shift pixel data to move next pixel to LSB. 
-      when others =>    -- Any other width, then 1 per pixel data word.
-        if (visible_s = YES) then
-          rd_x <= YES;  -- Read new pixel data from buffer every clock during visible portion of scan line.
-        end if;
-        pixelData_x <= pixelData_r;
-    end case;
+    -- Create the mask for the lower bits of the pixel row counter based on the width of the pixel.
+    cntMask_v := CONV_STD_LOGIC_VECTOR(pixelData_r'length/PIXEL_WIDTH_C - 1, cntMask_v'length);
 
-    -- Store the pixel data from the buffer instead of shifting the pixel data
-    -- if a read operation was initiated in the previous cycle.
+    -- Read new pixel data from buffer whenever pixel shift register is empty during visible portion of scan line.
+    if visible_s = YES and (pixelCnt_s and cntMask_v) = 0 then
+      rd_x <= YES;  -- Read new pixel data whenever lower bits of pixel counter are all zero (shift reg is empty).
+    else
+      rd_x <= NO;  -- Otherwise, don't read next word of pixel data from the buffer (shift reg is not empty).
+    end if;
+
+    -- Get new pixel data from buffer or shift existing pixel data.
     if rd_r = YES then
+      -- A read operation was initiated in the previous cycle, so store data from buffer into shift register.
       pixelData_x <= pixelDataOut_s;
+    else
+      -- Shift pixel data depending on its width so the next pixel is in the LSBs of the shift register.
+      pixelData_x(pixelData_x'high-PIXEL_WIDTH_C downto 0) <= pixelData_r(pixelData_x'high downto PIXEL_WIDTH_C);
     end if;
 
-    -- The current pixel is in the lower bits of the pixel data shift register.
-    pixel_s <= pixelData_r(pixel_s'range);
-  end process;
-
-  -- Map the current pixel to RGB values.
-  process(pixel_s, rgb_r, blank_r)
-  begin
-    if NUM_RGB_BITS_G = 2 then
-      case PIXEL_WIDTH_G is
-        when 1 =>                       -- 1-bit pixels map to black or white.
-          rgb_x <= (others => pixel_s(0));
-        when 2 =>  -- 2-bit pixels map to black, 2/3 gray, 1/3 gray, and white.
-          rgb_x <= pixel_s(1 downto 0) & pixel_s(1 downto 0) & pixel_s(1 downto 0);
-        when 4 =>  -- 4-bit pixels map to 8 colors (ignore MSB).
-          rgb_x <= pixel_s(2) & pixel_s(2) & pixel_s(1) & pixel_s(1) & pixel_s(0) & pixel_s(0);
-        when 8 =>  -- 8-bit pixels map directly to RGB values.
-          rgb_x <= pixel_s(7 downto 6) & pixel_s(4 downto 1);
-        when others =>  -- 16-bit pixels maps directly to RGB values.
-          rgb_x <= pixel_s(8) & pixel_s(7) & pixel_s(5) & pixel_s(4) & pixel_s(2) & pixel_s(1);
-      end case;
-    else                                -- NUM_RGB_BITS_G=3
-      case PIXEL_WIDTH_G is
-        when 1 =>                       -- 1-bit pixels map to black or white.
-          rgb_x <= (others => pixel_s(0));
-        when 2 =>  -- 2-bit pixels map to black, 5/7 gray, 3/7 gray, and  1/7 gray.
-          rgb_x <= pixel_s(1 downto 0) & '0' & pixel_s(1 downto 0) & '0' & pixel_s(1 downto 0) & '0';
-        when 4 =>  -- 4-bit pixels map to 8 colors (ignore MSB).
-          rgb_x <= pixel_s(2) & pixel_s(2) & pixel_s(2) & pixel_s(1) & pixel_s(1) & pixel_s(1) & pixel_s(0) & pixel_s(0) & pixel_s(0);
-        when 8 =>  -- 8-bit pixels map to RGB with reduced resolution in green component.
-          rgb_x <= pixel_s(7 downto 5) & pixel_s(4 downto 3) & '0' & pixel_s(2 downto 0);
-        when others =>  -- 16-bit pixels map directly to RGB values.
-          rgb_x <= pixel_s(8 downto 0);
-      end case;
+    -- The current pixel is in the lower bits of the pixel data shift register. Zero it if it's in the blanking period.
+    if blank_r(blank_r'high) = YES then
+      rgb_x <= (others => ZERO);        -- Blank the pixel.
+    else
+      rgb_x <= pixelData_r(rgb_x'range);  -- Otherwise, store the pixel in an output register.
     end if;
-
-    -- Just blank_p the pixel if not in the visible region of the screen.
-    if blank_r(blank_r'high-1) = YES then
-      rgb_x <= (others => '0');
-    end if;
-
-    -- Break the pixel into its red, green and blue components.
-    r_p <= rgb_r(3*NUM_RGB_BITS_G-1 downto 2*NUM_RGB_BITS_G);
-    g_p <= rgb_r(2*NUM_RGB_BITS_G-1 downto NUM_RGB_BITS_G);
-    b_p <= rgb_r(NUM_RGB_BITS_G-1 downto 0);
   end process;
 
   -- Update registers.
-  process(rst_p, clk_p)
+  process(rst_i, clk_i)
   begin
-    if rst_p = YES then
+    if rst_i = YES then
       rd_r        <= NO;
       hSync_r     <= (others => '1');
       blank_r     <= (others => '0');
       pixelData_r <= (others => '0');
       rgb_r       <= (others => '0');
-    elsif rising_edge(clk_p) then
+    elsif rising_edge(clk_i) then
       if cke_r = YES then
         rd_r        <= rd_x;
         hSync_r     <= hSync_x;
@@ -664,6 +605,9 @@ begin
       end if;
     end if;
   end process;
+
+  -- Output the contents of the pixel output register.
+  rgb_o <= rgb_r;
 
 end architecture;
 
@@ -686,12 +630,12 @@ entity TextCounter is
     POSITION_INCR_G : natural := 1  -- Amount to increment position after each character or line.
     );
   port (
-    rst_p         : in  std_logic;      -- Synchronous reset.
-    clk_p         : in  std_logic;      -- Master clock.
-    cke_p         : in  std_logic;      -- Clock enable.
-    position_p    : out std_logic_vector(Log2(TEXT_SIZE_G)-1 downto 0);  -- On-screen position of character being displayed.
-    subPosition_p : out std_logic_vector(Log2(CHAR_SIZE_G)-1 downto 0);  -- Current pixel position within character being displayed.
-    newPosition_p : out std_logic  -- Single-clock pulse when position changes.
+    rst_i         : in  std_logic;      -- Synchronous reset.
+    clk_i         : in  std_logic;      -- Master clock.
+    cke_i         : in  std_logic;      -- Clock enable.
+    position_o    : out std_logic_vector(Log2(TEXT_SIZE_G)-1 downto 0);  -- On-screen position of character being displayed.
+    subPosition_o : out std_logic_vector(Log2(CHAR_SIZE_G)-1 downto 0);  -- Current pixel position within character being displayed.
+    newPosition_o : out std_logic  -- Single-clock pulse when position changes.
     );
 end entity;
 
@@ -700,18 +644,18 @@ architecture arch of TextCounter is
   signal subPosition_r : natural range 0 to CHAR_SIZE_G-1;
 begin
 
-  process(clk_p)
+  process(clk_i)
   begin
-    if rising_edge(clk_p) then
-      newPosition_p <= NO;  -- This insures the pulse is only a single clock cycle wide.
-      if rst_p = YES then  -- Reset is driven by horizontal or vertical blanking, so positions go to zero at that time.
+    if rising_edge(clk_i) then
+      newPosition_o <= NO;  -- This insures the pulse is only a single clock cycle wide.
+      if rst_i = YES then  -- Reset is driven by horizontal or vertical blanking, so positions go to zero at that time.
         position_r    <= 0;
         subPosition_r <= 0;
-      elsif cke_p = YES then  -- Enable position update on pixel clock or end-of-line.
+      elsif cke_i = YES then  -- Enable position update on pixel clock or end-of-line.
         if subPosition_r = CHAR_SIZE_G-1 then  -- An entire character width or text line height has been reached.
           subPosition_r <= 0;  -- Reset once an entire character or text line height is complete and the next one starts.
           position_r    <= position_r + POSITION_INCR_G;  -- Also increment position to next char or line starting position.
-          newPosition_p <= YES;         -- Indicate position has been updated.
+          newPosition_o <= YES;         -- Indicate position has been updated.
         else
           subPosition_r <= subPosition_r + 1;  -- Keep incrementing subposition until it hits its maximum.
         end if;
@@ -719,8 +663,8 @@ begin
     end if;
   end process;
 
-  position_p    <= CONV_STD_LOGIC_VECTOR(position_r, position_p'length);
-  subPosition_p <= CONV_STD_LOGIC_VECTOR(subPosition_r, subPosition_p'length);
+  position_o    <= CONV_STD_LOGIC_VECTOR(position_r, position_o'length);
+  subPosition_o <= CONV_STD_LOGIC_VECTOR(subPosition_r, subPosition_o'length);
 
 end architecture;
 
@@ -740,10 +684,9 @@ use work.CommonPckg.all;
 
 entity TextVga is
   generic (
-    FREQ_G            : real    := 50.0;  -- Master clock frequency (in MHz).
-    CLK_DIV_G         : natural := 1;   -- FREQ_G / CLK_DIV_G = pixel clock.
-    CHAR_WIDTH_G      : natural := 8;   -- Character width in pixels.
-    CHAR_HEIGHT_G     : natural := 8;   -- Character height in lines.
+    FREQ_G          : real    := 50.0;  -- Master clock frequency (in MHz).
+    CLK_DIV_G       : natural := 1;     -- FREQ_G / CLK_DIV_G = pixel clock.
+    CHAR_HEIGHT_G   : natural := 8;     -- Character height in lines.
     NUM_TEXT_COLS_G : natural := 80;    -- Width of text screen in characters.
     NUM_TEXT_ROWS_G : natural := 25;    -- Height of text screen in characters.
     OFFSET_RIGHT_G  : integer := 0;  -- Offset of image to the right in pixels.
@@ -751,22 +694,22 @@ entity TextVga is
     FIT_TO_SCREEN_G : boolean := false  -- Fit width x length to monitor screen.
     );
   port (
-    rst_p     : in  std_logic;          -- Reset.
-    clk_p     : in  std_logic;          -- Master clock.
-    hSync_bp  : out std_logic;          -- Active-low horizontal (line) sync.
-    vSync_bp  : out std_logic;          -- Active-low vertical (frame) sync.
-    rgb_p     : out std_logic_vector(2 downto 0);  -- Red, green, blue colors.
-    ramAddr_p : out std_logic_vector(10 downto 0);  -- Address to video RAM containing text char codes.
-    ramData_p : in  std_logic_vector(7 downto 0);  -- Char code from video RAM.
-    romAddr_p : out std_logic_vector(11 downto 0);  -- Address to character generator ROM.
-    romData_p : in  std_logic_vector(CHAR_WIDTH_G-1 downto 0)  -- Row of character pixels from ROM.
+    rst_i            : in  std_logic;   -- Reset.
+    clk_i            : in  std_logic;   -- Master clock.
+    charAddr_o       : out std_logic_vector;  -- Address to video RAM containing text char codes.
+    charCode_i       : in  std_logic_vector;  -- Char code from video RAM.
+    charBitmapAddr_o : out std_logic_vector;  -- Address to character generator ROM.
+    charBitmapRow_i  : in  std_logic_vector;  -- Row of character pixels from ROM.
+    hSync_bo         : out std_logic;   -- Horizontal sync pulse.
+    vSync_bo         : out std_logic;   -- Vertical sync pulse.
+    rgb_o            : out std_logic_vector  -- Red, green, blue color output bus.
     );
 end entity;
 
 architecture arch of TextVga is
-  constant PIXEL_FREQ_C : real := FREQ_G / real(CLK_DIV_G);  -- Pixel drawing rate.
-  signal clkDivCnt_r    : natural range 0 to CLK_DIV_G;  -- Clock divider counter.
-  signal cke_r          : std_logic;  -- Clock enable pulses once every CLK_DIV_G clocks.
+  constant CHAR_WIDTH_C : natural := charBitmapRow_i'length;  -- Character width in pixels.
+  constant PIXEL_FREQ_C : real    := FREQ_G / real(CLK_DIV_G);  -- Pixel drawing rate.
+  signal pixelGate_r    : std_logic;  -- Pulses once every time a new pixel is drawn to the screen.
   signal eol_s          : std_logic;  -- Pulses once on end of each line of text.
   signal eof_s          : std_logic;  -- Pulses once on end of a frame of text.
   signal hBlank_s       : std_logic;  -- Goes high during horizontal blanking interval.
@@ -775,22 +718,24 @@ architecture arch of TextVga is
   signal textCol_s      : std_logic_vector(Log2(NUM_TEXT_COLS_G)-1 downto 0);  -- Current text column of char being drawn.
   signal newTextCol_s   : std_logic;    -- Pulses when text column increments.
   signal charRow_s      : std_logic_vector(Log2(CHAR_HEIGHT_G)-1 downto 0);  -- Index of row of character being drawn.
-  signal pixelReg_r     : std_logic_vector(CHAR_WIDTH_G-1 downto 0);  -- Pixels for output to display.
+  signal pixelReg_r     : std_logic_vector(charBitmapRow_i'range);  -- Pixels for output to display.
+  signal rgb_s          : std_logic_vector(rgb_o'range);
 begin
 
-  -- Clock divider for reducing the pixel clock rate.
-  process(clk_p, rst_p)
+  -- Clock divider for generating the pixel clock rate from the master clock.
+  process(clk_i, rst_i)
+    variable clkDivCnt_v : natural range 0 to CLK_DIV_G;
   begin
-    if rst_p = YES then
-      clkDivCnt_r <= 0;
-      cke_r       <= YES;
-    elsif rising_edge(clk_p) then
-      if clkDivCnt_r = CLK_DIV_G-1 then
-        clkDivCnt_r <= 0;
-        cke_r       <= YES;  -- Pulse clock enable once every CLK_DIV_G cycles.
+    if rst_i = YES then
+      clkDivCnt_v := 0;
+      pixelGate_r <= YES;
+    elsif rising_edge(clk_i) then
+      if clkDivCnt_v = CLK_DIV_G-1 then
+        clkDivCnt_v := 0;
+        pixelGate_r <= YES;  -- Pixel gate pulses once every CLK_DIV_G cycles.
       else
-        clkDivCnt_r <= clkDivCnt_r + 1;
-        cke_r       <= NO;
+        clkDivCnt_v := clkDivCnt_v + 1;
+        pixelGate_r <= NO;
       end if;
     end if;
   end process;
@@ -799,40 +744,40 @@ begin
   UHVSyncGen : HVSyncGen
     generic map(
       PIXEL_FREQ_G      => PIXEL_FREQ_C,
-      PIXELS_PER_LINE_G => NUM_TEXT_COLS_G * CHAR_WIDTH_G,
+      PIXELS_PER_LINE_G => NUM_TEXT_COLS_G * CHAR_WIDTH_C,
       LINES_PER_FRAME_G => NUM_TEXT_ROWS_G * CHAR_HEIGHT_G,
       OFFSET_RIGHT_G    => OFFSET_RIGHT_G,
       OFFSET_DOWN_G     => OFFSET_DOWN_G,
       FIT_TO_SCREEN_G   => FIT_TO_SCREEN_G
       )
     port map(
-      rst_p    => rst_p,
-      clk_p    => clk_p,
-      cke_p    => cke_r,
-      eol_p    => eol_s,
-      eof_p    => eof_s,
-      hSync_bp => hSync_bp,
-      vSync_bp => vSync_bp,
-      hBlank_p => hBlank_s,
-      vBlank_p => vBlank_s
+      rst_i    => rst_i,
+      clk_i    => clk_i,
+      cke_i    => pixelGate_r,
+      eol_o    => eol_s,
+      eof_o    => eof_s,
+      hSync_bo => hSync_bo,
+      vSync_bo => vSync_bo,
+      hBlank_o => hBlank_s,
+      vBlank_o => vBlank_s
       );
 
   -- Keep track of the current column of text being displayed.
   UColTextCounter : TextCounter
     generic map (
-      CHAR_SIZE_G     => CHAR_WIDTH_G,
+      CHAR_SIZE_G     => CHAR_WIDTH_C,
       TEXT_SIZE_G     => NUM_TEXT_COLS_G,
       POSITION_INCR_G => 1
       )
     port map (
-      rst_p         => hBlank_s,        -- Horizontal blank resets column to 0.
-      clk_p         => clk_p,
-      cke_p         => cke_r,
-      position_p    => textCol_s,
-      newPosition_p => newTextCol_s
+      rst_i         => hBlank_s,        -- Horizontal blank resets column to 0.
+      clk_i         => clk_i,
+      cke_i         => pixelGate_r,
+      position_o    => textCol_s,
+      newPosition_o => newTextCol_s  -- Pulses when new column of text begins.
       );
 
-  -- Keep track of the starting address of the current row being displayed.
+  -- Keep track of the starting address of the current text row being displayed.
   URowTextCounter : TextCounter
     generic map (
       CHAR_SIZE_G     => CHAR_HEIGHT_G,
@@ -840,34 +785,35 @@ begin
       POSITION_INCR_G => NUM_TEXT_COLS_G
       )
     port map (
-      rst_p         => vBlank_s,        -- Vertical blank resets address to 0.
-      clk_p         => clk_p,
-      cke_p         => eol_s,  -- Increment address after a complete text line of characters is drawn.
-      position_p    => rowStartAddr_s,
-      subPosition_p => charRow_s  -- Current row of pixels being drawn in the line of text.
+      rst_i         => vBlank_s,        -- Vertical blank resets address to 0.
+      clk_i         => clk_i,
+      cke_i         => eol_s,  -- Update address after a complete line of text characters is drawn.
+      position_o    => rowStartAddr_s,
+      subPosition_o => charRow_s  -- Current row of pixels being drawn in the line of text.
       );
 
   -- Address of character to display is starting address of the row of text + column of the current character being drawn.
-  ramAddr_p <= rowStartAddr_s + textCol_s;
+  charAddr_o <= rowStartAddr_s + textCol_s;
 
   -- Use the character display code and the current pixel row index to get the current row of pixels for the character bitmap.
-  romAddr_p <= CONV_STD_LOGIC_VECTOR(CONV_INTEGER(ramData_p) * CHAR_HEIGHT_G + CONV_INTEGER(charRow_s), romAddr_p'length);
+  charBitmapAddr_o <= CONV_STD_LOGIC_VECTOR(CONV_INTEGER(charCode_i) * CHAR_HEIGHT_G + CONV_INTEGER(charRow_s), charBitmapAddr_o'length);
 
   -- Shift the row of character pixels out to the display.
-  process(clk_p)
+  process(clk_i)
   begin
-    if rising_edge(clk_p) then
+    if rising_edge(clk_i) then
       if hBlank_s = YES or vBlank_s = YES then
         pixelReg_r <= (others => '0');  -- Zero the pixels during blanking intervals.
       elsif newTextCol_s = YES then
-        pixelReg_r <= romData_p;  -- Load new row of pixels every time text column changes.
-      elsif cke_r = YES then
+        pixelReg_r <= charBitmapRow_i;  -- Load new row of pixels every time text column changes.
+      elsif pixelGate_r = YES then
         pixelReg_r <= pixelReg_r(pixelReg_r'high-1 downto 0) & ZERO;  -- Shift out pixels to display.
       end if;
     end if;
   end process;
 
   -- Output black/white pixels (R, G and B all the same value).
-  rgb_p <= (others => pixelReg_r(pixelReg_r'high));
+  rgb_s <= (others => pixelReg_r(pixelReg_r'high));
+  rgb_o <= rgb_s;
 
 end architecture;

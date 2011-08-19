@@ -27,15 +27,15 @@ use IEEE.STD_LOGIC_1164.all;
 
 package ClkGenPckg is
 
-  component ClkGen
+  component ClkGen is
     generic (
-      BASE_FREQ_G : real                  := 12.0;  -- input frequency in MHz
-      CLK_MUL_G   : natural range 1 to 32 := 25;    -- frequency multiplier
-      CLK_DIV_G   : natural range 1 to 32 := 3      -- frequency divider
+      BASE_FREQ_G : real                  := 12.0;  -- Input frequency in MHz.
+      CLK_MUL_G   : natural range 1 to 32 := 25;    -- Frequency multiplier.
+      CLK_DIV_G   : natural range 1 to 32 := 3      -- Frequency divider.
       );
     port (
-      I : in  std_logic;                          -- clock input
-      O : out std_logic                           -- generated clock output
+      i : in  std_logic;  -- Clock input (12 MHz by default).
+      o : out std_logic   -- Generated clock output (100 MHz by default).
       );
   end component;
 
@@ -45,20 +45,20 @@ end package;
 library IEEE;
 use IEEE.STD_LOGIC_1164.all;
 
----- Uncomment the following library declaration if instantiating
----- any Xilinx primitives in this code.
+-- Uncomment the following library declaration if instantiating
+-- any Xilinx primitives in this code.
 library UNISIM;
 use UNISIM.VComponents.all;
 
 entity ClkGen is
   generic (
-    BASE_FREQ_G : real                  := 12.0;  -- input frequency in MHz
-    CLK_MUL_G   : natural range 1 to 32 := 25;    -- frequency multiplier
-    CLK_DIV_G   : natural range 1 to 32 := 3      -- frequency divider
+    BASE_FREQ_G : real                  := 12.0;  -- Input frequency in MHz.
+    CLK_MUL_G   : natural range 1 to 32 := 25;    -- Frequency multiplier.
+    CLK_DIV_G   : natural range 1 to 32 := 3      -- Frequency divider.
     );
   port (
-    I : in  std_logic;                          -- clock input
-    O : out std_logic                           -- generated clock output
+    i : in  std_logic;  -- Clock input (12 MHz by default).
+    o : out std_logic   -- Generated clock output (100 MHz by default).
     );
 end entity;
 
@@ -81,8 +81,8 @@ begin
       STARTUP_WAIT          => false)  --  Delay configuration DONE until DCM LOCK, TRUE/FALSE
     port map (
       RST   => '0',                     -- DCM asynchronous reset input
-      CLKIN => I,                  -- Clock input (from IBUFG, BUFG or DCM)
-      CLKFX => O                        -- Generated clock output
+      CLKIN => i,                       -- Clock input (from IBUFG, BUFG or DCM)
+      CLKFX => o                        -- Generated clock output
       );
 
 end architecture;

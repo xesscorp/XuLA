@@ -49,7 +49,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all;
 
-package VgaCtlr_pckg is
+package VgaCtlrPckg is
 
   component VgaCtlr
     port (

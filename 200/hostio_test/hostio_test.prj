@@ -1,5 +1,0 @@
-vhdl work "../../XuLA_lib/SyncToClk.vhd"
-vhdl work "../../XuLA_lib/common.vhd"
-vhdl work "../../XuLA_lib/hostio.vhd"
-vhdl work "../../XuLA_lib/clkgen.vhd"
-vhdl work "hostio_test.vhd"

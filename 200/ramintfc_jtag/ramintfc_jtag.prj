@@ -1,5 +1,5 @@
-vhdl work "../../XuLA_lib/common.vhd"
+vhdl work "../../XuLA_lib/Common.vhd"
 vhdl work "../../XuLA_lib/UserInstrJtag.vhd"
-vhdl work "../../XuLA_lib/sdramcntl.vhd"
-vhdl work "../../XuLA_lib/clkgen.vhd"
+vhdl work "../../XuLA_lib/SdramCntl.vhd"
+vhdl work "../../XuLA_lib/ClkGen.vhd"
 vhdl work "ramintfc_jtag.vhd"

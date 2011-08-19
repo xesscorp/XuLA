@@ -18,8 +18,7 @@
 ----------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------
--- Test board via JTAG.
--- See userinstr_jtag.vhd for details of operation.
+-- Simple SDRAM test with result output on channel I/O pins.
 --------------------------------------------------------------------
 
 
@@ -53,34 +52,32 @@ entity sdram_test is
     END_TEST_G    : natural := 16#3F_FFFF#
     );
   port(
-    fpgaClk     : in    std_logic;  -- main clock input from external clock source
-    sdramClk    : out   std_logic;     -- clock to SDRAM
-    sdramClkFb : in    std_logic;     -- SDRAM clock comes back in
-    ras_b        : out   std_logic;     -- SDRAM RAS
-    cas_b        : out   std_logic;     -- SDRAM CAS
-    we_b         : out   std_logic;     -- SDRAM write-enable
-    bs           : out   std_logic;     -- SDRAM bank-address
-    a            : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus
-    d            : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- data bus to/from SDRAM
-    chan         : inout std_logic_vector(5 downto 1)
+    fpgaClk_i     : in    std_logic;  -- main clock input from external clock source
+    sdClk_o    : out   std_logic;     -- clock to SDRAM
+    sdClkFb_i : in    std_logic;     -- SDRAM clock comes back in
+    sdRas_bo        : out   std_logic;     -- SDRAM RAS
+    sdCas_bo        : out   std_logic;     -- SDRAM CAS
+    sdWe_bo         : out   std_logic;     -- SDRAM write-enable
+    sdBs_o           : out   std_logic;     -- SDRAM bank-address
+    sdAddr_o            : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus
+    sdData_io            : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- data bus to/from SDRAM
+    chan_io         : inout std_logic_vector(5 downto 1)
     );
 end sdram_test;
 
 
 architecture arch of sdram_test is
 
-  constant FREQ_G          : real := (BASE_FREQ_G * real(CLK_MUL_G)) / real(CLK_DIV_G);
+  constant FREQ_G        : real := (BASE_FREQ_G * real(CLK_MUL_G)) / real(CLK_DIV_G);
   signal clk             : std_logic;
-  signal test_progress   : std_logic_vector(1 downto 0);  -- progress of the test
-  signal test_failed     : std_logic;  -- true if an error was found during the test
 
 begin
 
   u0 : Clkgen
     generic map (BASE_FREQ_G => BASE_FREQ_G, CLK_MUL_G => CLK_MUL_G, CLK_DIV_G => CLK_DIV_G)
-    port map(I             => fpgaClk, O => sdramClk);
+    port map(I             => fpgaClk_i, O => sdClk_o);
 
-  clk <= sdramClkFb;  -- main clock is SDRAM clock fed back into FPGA
+  clk <= sdClkFb_i;  -- main clock is SDRAM clock fed back into FPGA
 
   -- board diagnostic unit
   u1 : TestBoardCore
@@ -97,17 +94,16 @@ begin
       END_TEST_G    => END_TEST_G
       )
     port map(
-      clk       => clk,
-      ras_b     => ras_b,
-      cas_b     => cas_b,
-      we_b      => we_b,
-      ba(0)     => bs,
-      ba(1)     => open,
-      sAddr     => a,
-      sData     => d,
-      heartBeat => chan(1),
-      err       => chan(3),
-      progress  => chan(5 downto 4)
+      clk_i       => clk,
+      sdRas_bo     => sdRas_bo,
+      sdCas_bo     => sdCas_bo,
+      sdWe_bo      => sdWe_bo,
+      sdBs_o(0)     => sdBs_o,
+      sdAddr_o     => sdAddr_o,
+      sdData_io     => sdData_io,
+      heartBeat_o => chan_io(1), -- Indicates if the test is running or not.
+      err_o       => chan_io(3), -- Indicates if the test passed or not.
+      progress_o  => chan_io(5 downto 4) -- Indicates the phase of the test in progress.
       );
 
 end architecture;

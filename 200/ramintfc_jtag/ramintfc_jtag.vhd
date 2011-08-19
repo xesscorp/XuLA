@@ -38,26 +38,26 @@ use UNISIM.VComponents.all;
 
 entity ramintfc_jtag is
   generic(
-    BASE_FREQ_G   : real    := 12.0;      -- base frequency in MHz
-    CLK_MUL_G     : natural := 25;        -- multiplier for base frequency
-    CLK_DIV_G     : natural := 3;         -- divider for base frequency
+    BASE_FREQ_G   : real    := 12.0;    -- base frequency in MHz
+    CLK_MUL_G     : natural := 25;      -- multiplier for base frequency
+    CLK_DIV_G     : natural := 3;       -- divider for base frequency
     PIPE_EN_G     : boolean := true;
-    DATA_WIDTH_G  : natural := 16;        -- width of data
-    HADDR_WIDTH_G : natural := 23;        -- host-side address width
-    SADDR_WIDTH_G : natural := 12;        -- SDRAM address bus width
-    NROWS_G       : natural := 4096;      -- number of rows in each SDRAM bank
-    NCOLS_G       : natural := 512        -- number of words in each row
+    DATA_WIDTH_G  : natural := 16;      -- width of data
+    HADDR_WIDTH_G : natural := 23;      -- host-side address width
+    SADDR_WIDTH_G : natural := 12;      -- SDRAM address bus width
+    NROWS_G       : natural := 4096;    -- number of rows in each SDRAM bank
+    NCOLS_G       : natural := 512      -- number of words in each row
     );
   port(
-    fpgaClk     : in    std_logic;  -- main clock input from external clock source
-    sdramClk    : out   std_logic;     -- clock to SDRAM
-    sdramClkFb : in    std_logic;     -- SDRAM clock comes back in
-    ras_b        : out   std_logic;     -- SDRAM RAS
-    cas_b        : out   std_logic;     -- SDRAM CAS
-    we_b         : out   std_logic;     -- SDRAM write-enable
-    bs           : out   std_logic;     -- SDRAM bank-address
-    a            : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus
-    d            : inout std_logic_vector(DATA_WIDTH_G-1 downto 0)  -- data bus to/from SDRAM
+    fpgaClk_i : in    std_logic;  -- main clock input from external clock source
+    sdClk_o   : out   std_logic;        -- clock to SDRAM
+    sdClkFb_i : in    std_logic;        -- SDRAM clock comes back in
+    sdRas_bo  : out   std_logic;        -- SDRAM RAS
+    sdCas_bo  : out   std_logic;        -- SDRAM CAS
+    sdWe_bo   : out   std_logic;        -- SDRAM write-enable
+    sdBs_o    : out   std_logic;        -- SDRAM bank-address
+    sdAddr_o  : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus
+    sdData_io : inout std_logic_vector(DATA_WIDTH_G-1 downto 0)  -- data bus to/from SDRAM
     );
 end entity;
 
@@ -65,7 +65,7 @@ end entity;
 architecture arch of ramintfc_jtag is
 
   constant FREQ_G : real := (BASE_FREQ_G * real(CLK_MUL_G)) / real(CLK_DIV_G);
-  signal clk    : std_logic;
+  signal clk      : std_logic;
 
   -- signals to/from the JTAG BSCAN module
   signal bscan_drck   : std_logic;      -- JTAG clock from BSCAN module
@@ -87,14 +87,15 @@ architecture arch of ramintfc_jtag is
   signal hDOut        : std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- host data output to host
   
 begin
-	  
-  u0 : ClkGen 
-    generic map (BASE_FREQ_G=>BASE_FREQ_G, CLK_MUL_G=>CLK_MUL_G, CLK_DIV_G=>CLK_DIV_G)
-	port map (I=>fpgaClk, O=>sdramClk);
 
-  clk <= sdramClkFb;  -- main clock is SDRAM clock fed back into FPGA
+  -- Generate a 100 MHz clock from the 12 MHz input clock.
+  u0 : ClkGen
+    generic map (BASE_FREQ_G => BASE_FREQ_G, CLK_MUL_G => CLK_MUL_G, CLK_DIV_G => CLK_DIV_G)
+    port map (I              => fpgaClk_i, O => sdClk_o);
 
-  -- generate a reset signal for the SDRAM controller  
+  clk <= sdClkFb_i;  -- main clock is SDRAM clock fed back into FPGA
+
+  -- Generate a reset signal for the SDRAM controller.  
   process(clk)
     constant reset_dly_c : natural                        := 10;
     variable rst_cntr    : natural range 0 to reset_dly_c := 0;
@@ -108,7 +109,7 @@ begin
     end if;
   end process;
 
-  -- boundary-scan interface to FPGA JTAG port
+  -- Boundary-scan interface to FPGA JTAG port.
   u_bscan : BSCAN_SPARTAN3
     port map(
       DRCK1  => bscan_drck,             -- JTAG clock
@@ -163,23 +164,22 @@ begin
       SADDR_WIDTH_G => SADDR_WIDTH_G
       )
     port map(
-      clk          => clk,  -- master clock from external clock source (unbuffered)
-      lock         => YES,  -- no DLLs, so frequency is always locked
-      rst          => sdram_reset,      -- reset
-      rd           => hrd,  -- host-side SDRAM read control from memory tester
-      wr           => hwr,  -- host-side SDRAM write control from memory tester
-      earlyOpBegun => earlyOpBegun,  -- early indicator that memory operation has begun
-      done         => done,   -- SDRAM memory read/write done indicator
-      hAddr        => hAddr,  -- host-side address from memory tester to SDRAM
-      hDIn         => hDIn,   -- test data pattern from memory tester to SDRAM
-      hDOut        => hDOut,            -- SDRAM data output to memory tester
-      ras_b        => ras_b,            -- SDRAM RAS
-      cas_b        => cas_b,            -- SDRAM CAS
-      we_b         => we_b,             -- SDRAM write-enable
-      ba(0)        => bs,               -- SDRAM bank address
-      ba(1)        => open,             -- SDRAM bank address
-      sAddr        => a,                -- SDRAM address
-      sData        => d                 -- data to/from SDRAM
+      clk_i          => clk,  -- master clock from external clock source (unbuffered)
+      lock_i         => YES,  -- no DLLs, so frequency is always locked
+      rst_i          => sdram_reset,    -- reset
+      rd_i           => hrd,  -- host-side SDRAM read control from memory tester
+      wr_i           => hwr,  -- host-side SDRAM write control from memory tester
+      earlyOpBegun_o => earlyOpBegun,  -- early indicator that memory operation has begun
+      done_o         => done,  -- SDRAM memory read/write done indicator
+      hostAddr_i     => hAddr,  -- host-side address from memory tester to SDRAM
+      hostData_i     => hDIn,  -- test data pattern from memory tester to SDRAM
+      sdramData_o    => hDOut,          -- SDRAM data output to memory tester
+      sdRas_bo       => sdRas_bo,       -- SDRAM RAS
+      sdCas_bo       => sdCas_bo,       -- SDRAM CAS
+      sdWe_bo        => sdWe_bo,        -- SDRAM write-enable
+      sdBs_o(0)      => sdBs_o,         -- SDRAM bank address
+      sdAddr_o       => sdAddr_o,       -- SDRAM address
+      sdData_io      => sdData_io       -- data to/from SDRAM
       );
 
 end architecture;
