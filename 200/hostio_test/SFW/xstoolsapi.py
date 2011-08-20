@@ -47,6 +47,4 @@ DutRead.argtypes = [c_void_p, POINTER(c_ubyte), c_uint]
 
 # A little utility subroutine for printing out a list of bits with bits[0] = LSB. 
 def PrintBits(bits):
-    for bit in reversed(bits): # Reverse bits so they get printed MSB-first.
-        print bit,
-    print
+    print ''.join([str(b) for b in reversed(bits)]) # Reverse bits so they get printed MSB-first.
