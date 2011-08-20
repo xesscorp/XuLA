@@ -71,6 +71,8 @@ This module accepts a generic parameter that defines its eight-bit identifier. T
 to select the bits intended for this module from the serial data stream output by the BscanToHostIo module.
 Each module instantiated in an FPGA design must have a unique identifier.
 
+=back
+
 =head2 Microcontroller Firmware
 
 The microcontroller firmware accepts packets of JTAG commands from the host PC over the USB link and sends them
