@@ -31,6 +31,9 @@ Part 2: Write and read the block RAM component using a stream of
     
 Part 3: Increment and decrement the four-bit counter component and
     display the counter bits after each operation.
+    
+Part 4: Send random numbers to a subtractor and check the result against
+    the result computed in this program.
 '''
 
 from xstoolsapi import *
@@ -48,7 +51,7 @@ REG_ID = 1  # This is the identifier for the single register in the FPGA.
 reg = XsMem(USB_ID, REG_ID)  # Create an object for reading/writing the register.
 
 NUM_TRIALS = 1000  # Number of register reads and writes to do.
-REG_MAX_DATA = 2 ** reg.mDataWidth - 1  # Maximum value that can be stored in register.
+REG_MAX_DATA = 2 ** reg.dataWidth - 1  # Maximum value that can be stored in register.
 errorCntr = 0
 for i in range(0, NUM_TRIALS):
     wrData = random.randint(0, REG_MAX_DATA + 1)
@@ -68,8 +71,8 @@ BRAM_ID = 2  # This is the identifier for the BRAM in the FPGA.
 bram = XsMem(USB_ID, BRAM_ID)  # Create an object for reading/writing the BRAM.
 
 # Create constants and lists for reading/writing the BRAM.
-BRAM_SIZE = 2 ** bram.mAddrWidth  # Number of words in the BRAM.
-BRAM_MAX_DATA = 2 ** bram.mDataWidth - 1  # Maximum value that can be stored in BRAM word.
+BRAM_SIZE = 2 ** bram.addrWidth  # Number of words in the BRAM.
+BRAM_MAX_DATA = 2 ** bram.dataWidth - 1  # Maximum value that can be stored in BRAM word.
 # Create a list of random integers to write to the BRAM.
 wrBram = [random.randint(0, BRAM_MAX_DATA + 1) for i in range(0, BRAM_SIZE)]
 # Create a list of integers to receive the values read from the BRAM.
@@ -92,25 +95,39 @@ print '''\n\n\n
 '''
 CNTR_ID = 3  # This is the identifier for the counter in the FPGA.
 cntr = XsDut(USB_ID, CNTR_ID)
-cntBits = [0] * cntr.mNumOutputs
-MAX_CNT = 2 ** cntr.mNumOutputs - 1
+MAX_CNT = 2 ** cntr.numOutputs - 1
 # These are the settings for the control input of the counter.
 INCREMENT = 1
 DECREMENT = 0
 
 print 'First, we increment:'
 for i in range(0, MAX_CNT + 1):
-    cntr.Write(INCREMENT)  # Write the control signal and pulse the counter clock input.
-    print '{0:4d} :'.format(cntr.Read()),   # Print the counter's decimal value.
-    cntr.Read(cntBits)  # Read the value of the counter again, but now as a list of individual bits.
-    PrintBits(cntBits)  # Print the counter bits.
+    cnt = cntr.Exec(INCREMENT) # Pulse the counter clock input and read back the counter output.
+    print "%4s : %2d" % (cnt.string, cnt.int) # Print the counter bits and their integer equivalent.
 
 print '\nThen, we decrement:'
 for i in range(0, MAX_CNT + 1):
-    cntr.Write(DECREMENT)  # Write the control signal and pulse the counter clock input.
-    print '{0:4d} :'.format(cntr.Read()),   # Print the counter's decimal value.
-    cntr.Read(cntBits)  # Read the value of the counter again, but now as a list of individual bits.
-    PrintBits(cntBits)  # Print the counter bits.
+    cnt = cntr.Exec(DECREMENT) # Pulse the counter clock input and read back the counter output.
+    print "%4s : %2d" % (cnt.string, cnt.int) # Print the counter bits and their integer equivalent.
+    
+print '''\n\n\n
+
+##################################################################
+# Test the eight-bit subtractor in the FPGA hostio_test circuit.
+##################################################################
+'''
+SUBTRACTOR_ID = 4  # This is the identifier for the subtracter in the FPGA.
+# Create a DUT object for the adder which takes two 8-bit inputs and outputs an 8-bit result and a carry bit.
+adder = XsDut(USB_ID, SUBTRACTOR_ID, [8,8], [8,1])
+
+NUM_TRIALS = 1000
+errorCntr = 0
+for i in range(0, NUM_TRIALS):
+    minuend = random.randint(0,128)
+    subtrahend = random.randint(0,128)
+    diff, borrow = adder.Exec(minuend, subtrahend)
+    errorCntr += (diff.int != minuend - subtrahend) and 1 or 0
+print '{0} errors were found in {1} trials of the subtractor.'.format(errorCntr, NUM_TRIALS)
 
 print '''\n\n
 Waiting in an infinite loop so you can examine the results...
