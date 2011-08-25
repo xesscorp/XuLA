@@ -97,7 +97,7 @@ modules by a program running on a host PC.
 
 =head2 FPGA Directory
 
-The F<FPGA> directory contains an FPGA design built from three components:
+The F<FPGA> directory contains an FPGA design built from four components:
 
 =over 4
 
@@ -110,10 +110,13 @@ A 1024 x 16 block RAM (BRAM).
 =item *
 A four-bit up/down counter.
 
+=item *
+An eight-bit subtractor.
+
 =back
 
-The register and BRAM are each connected to their own HostIoToRam module, and the counter is
-connected to a HostIoToDut module.
+The register and BRAM are each connected to their own HostIoToRam module, while the counter and subtractor are
+each connected to their own HostIoToDut module.
 
 =head2 SFW Directory
 
@@ -135,6 +138,11 @@ read and written values were seen.
 
 It increments the four-bit counter sixteen times, then decrements it sixteen times, reporting the
 counter's value after each operation.
+
+=item *
+
+It sends random values to the subtractor and checks the returned result against it's own computed result
+and reports any errors.
 
 =back
 

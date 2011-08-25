@@ -70,103 +70,105 @@ FPGA <=> PC HOST BIDIRECTIONAL COMMUNICATION
         unique identifier.
 
   Microcontroller Firmware
-        The microcontroller firmware accepts packets of JTAG commands from
-        the host PC over the USB link and sends them to the FPGA. It also
-        accepts JTAG data from the FPGA and packages it into USB packets
-        that are returned to the PC.
+    The microcontroller firmware accepts packets of JTAG commands from the
+    host PC over the USB link and sends them to the FPGA. It also accepts
+    JTAG data from the FPGA and packages it into USB packets that are
+    returned to the PC.
 
-        As of this date (08/17/2011), the XuLA board factory-installed
-        firmware does not support the JTAG commands needed to use the HostIo
-        modules. Therefore, you must upgrade the firmware using the XuLA
-        Firmware Update command placed in the Windows Start menu when you
-        installed the XSTOOLs software. (Just attach your XuLA board to a
-        USB port and execute this command to upgrade the firmware.)
+    As of this date (08/17/2011), the XuLA board factory-installed firmware
+    does not support the JTAG commands needed to use the HostIo modules.
+    Therefore, you must upgrade the firmware using the XuLA Firmware Update
+    command placed in the Windows Start menu when you installed the XSTOOLs
+    software. (Just attach your XuLA board to a USB port and execute this
+    command to upgrade the firmware.)
 
   Host PC Software Library
-        XstoolsApi.dll is the dynamic link library containing the
-        subroutines for initializing and communicating with the HostIo
-        modules in the FPGA. A list of the subroutines can be found in the
-        XstoolsApi.h file.
+    XstoolsApi.dll is the dynamic link library containing the subroutines
+    for initializing and communicating with the HostIo modules in the FPGA.
+    A list of the subroutines can be found in the XstoolsApi.h file.
 
 Design Example
-        A complete design example is provided that configures the FPGA with
-        circuitry that can be probed through the HostIo modules by a program
-        running on a host PC.
+    A complete design example is provided that configures the FPGA with
+    circuitry that can be probed through the HostIo modules by a program
+    running on a host PC.
 
   FPGA Directory
-        The FPGA directory contains an FPGA design built from three
-        components:
+    The FPGA directory contains an FPGA design built from four components:
 
-        * A 32-bit register.
-        * A 1024 x 16 block RAM (BRAM).
-        * A four-bit up/down counter.
+    * A 32-bit register.
+    * A 1024 x 16 block RAM (BRAM).
+    * A four-bit up/down counter.
+    * An eight-bit subtractor.
 
-        The register and BRAM are each connected to their own HostIoToRam
-        module, and the counter is connected to a HostIoToDut module.
+    The register and BRAM are each connected to their own HostIoToRam
+    module, while the counter and subtractor are each connected to their own
+    HostIoToDut module.
 
   SFW Directory
-        The SFW directory contains the hostio_test.exe executable that
-        performs the following operations:
+    The SFW directory contains the hostio_test.exe executable that performs
+    the following operations:
 
-        *   It iteratively writes, reads and compares the 32-bit register
-            with 1000 random values and reports if any mismatches between
-            the read and written values were seen.
+    *   It iteratively writes, reads and compares the 32-bit register with
+        1000 random values and reports if any mismatches between the read
+        and written values were seen.
 
-        *   It writes the BRAM with 1024 random values, reads them back and
-            reports if any mismatches between the read and written values
-            were seen.
+    *   It writes the BRAM with 1024 random values, reads them back and
+        reports if any mismatches between the read and written values were
+        seen.
 
-        *   It increments the four-bit counter sixteen times, then
-            decrements it sixteen times, reporting the counter's value after
-            each operation.
+    *   It increments the four-bit counter sixteen times, then decrements it
+        sixteen times, reporting the counter's value after each operation.
 
-        The other files in this directory are:
+    *   It sends random values to the subtractor and checks the returned
+        result against it's own computed result and reports any errors.
 
-        *   hostio_test.py contains the Python source for the executable.
-            You can execute this file directly if you have a Python
-            interpreter installed on your PC.
+    The other files in this directory are:
 
-        *   hostio_test.spec contains the information for compiling the
-            Python source into an executable using the PyInstaller tool.
+    *   hostio_test.py contains the Python source for the executable. You
+        can execute this file directly if you have a Python interpreter
+        installed on your PC.
 
-        *   XstoolsApi.dll is the dynamic link library containing the
-            subroutines for initializing and communicating with the HostIo
-            modules in the FPGA.
+    *   hostio_test.spec contains the information for compiling the Python
+        source into an executable using the PyInstaller tool.
 
-        *   XstoolsApi.h lists the subroutines found in the DLL.
+    *   XstoolsApi.dll is the dynamic link library containing the
+        subroutines for initializing and communicating with the HostIo
+        modules in the FPGA.
 
-        *   xstoolsapi.py is a Python interface between the hostio_test.py
-            program and the XstoolsApi.dll DLL.
+    *   XstoolsApi.h lists the subroutines found in the DLL.
+
+    *   xstoolsapi.py is a Python interface between the hostio_test.py
+        program and the XstoolsApi.dll DLL.
 
   Running the Design Example
-        1.  Plug your XuLA board into a USB port on your PC.
+    1.  Plug your XuLA board into a USB port on your PC.
 
-        2.  Upgrade the XuLA firmware if you haven't already done so.
+    2.  Upgrade the XuLA firmware if you haven't already done so.
 
-        3.  Download the hostio_test.bit bitstream to the FPGA on the XuLA
-            board using GXSLOAD.
+    3.  Download the hostio_test.bit bitstream to the FPGA on the XuLA board
+        using GXSLOAD.
 
-        4.  Execute the hostio_test.exe program. It will show the results of
-            the tests described above.
+    4.  Execute the hostio_test.exe program. It will show the results of the
+        tests described above.
 
   Modifying the Design Example
-        Here are a couple of simple ideas to try:
+    Here are a couple of simple ideas to try:
 
-        *   Modify the counter to increment/decrement by three. Download the
-            new design to the XuLA board and run hostio_test.exe again. Note
-            the change in the counter values that are displayed.
+    *   Modify the counter to increment/decrement by three. Download the new
+        design to the XuLA board and run hostio_test.exe again. Note the
+        change in the counter values that are displayed.
 
-        *   Modify the register portion of the hostio_test design so that it
-            stores the given value plus one. Then run hostio_test.exe again.
-            It should report 1000 errors in reading/writing the register
-            because the value read from the register no longer matches the
-            value that was written.
+    *   Modify the register portion of the hostio_test design so that it
+        stores the given value plus one. Then run hostio_test.exe again. It
+        should report 1000 errors in reading/writing the register because
+        the value read from the register no longer matches the value that
+        was written.
 
-        *   Install Python 2.7 and the ctypes module so you can run the
-            hostio_text.py program directly without the need to compile it.
-            Then modify the Python source so the value read from the
-            register is decremented before comparing it to the value that
-            was written. Run the modified Python program with the modified
-            FPGA design in the XuLA board. Now the errors reading/writing
-            the register should be gone.
+    *   Install Python 2.7 and the ctypes module so you can run the
+        hostio_text.py program directly without the need to compile it. Then
+        modify the Python source so the value read from the register is
+        decremented before comparing it to the value that was written. Run
+        the modified Python program with the modified FPGA design in the
+        XuLA board. Now the errors reading/writing the register should be
+        gone.
 
