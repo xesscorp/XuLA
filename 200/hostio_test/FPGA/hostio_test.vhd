@@ -65,6 +65,9 @@ architecture Behavioral of hostio_test is
   signal cntr_r         : std_logic_vector(3 downto 0)  := "1011";
   signal cntrUpDn_s     : std_logic_vector(0 downto 0);
   signal cntrClk_s      : std_logic;
+  signal tdoSub_s       : std_logic;
+  signal toSub_s        : std_logic_vector(15 downto 0);
+  signal difference_s   : std_logic_vector(8 downto 0);
 
 begin
 
@@ -82,7 +85,7 @@ begin
 
   -- OR the bits from all the user's modules and send them back to the PC.
   -- (Non-selected modules pull their TDO outputs low, so only bits from the active module are transferred.)
-  tdo_s <= tdoReg_s or tdoBram_s or tdoCntr_s;
+  tdo_s <= tdoReg_s or tdoBram_s or tdoCntr_s or tdoSub_s;
 
   -- This module interfaces a single register to the JTAG port so that it can be read/written by the PC host.
   UHostIoToReg : HostIoToRam
@@ -150,7 +153,7 @@ begin
       );
 
   -- This module interfaces a counter to the JTAG port so that it can be read/modified by the PC host.
-  UHostIoToDut : HostIoToDut
+  UHostIoToCntr : HostIoToDut
     generic map (
       ID_G => "00000011"  -- The identifier used by the PC host to access this module.
       )
@@ -165,6 +168,7 @@ begin
       vectorFromDut_i => cntr_r
       );
 
+  -- This is the counter that interfaces to the module above.
   process(cntrClk_s)
   begin
     if rising_edge(cntrClk_s) then
@@ -176,6 +180,24 @@ begin
       end case;
     end if;
   end process;
+  
+  -- This module interfaces a subtractor to the JTAG port so that it can be exercised by the PC host.
+  UHostIoToAdder : HostIoToDut
+    generic map (
+      ID_G => "00000100"  -- The identifier used by the PC host to access this module.
+      )
+    port map (
+      inShiftDr_i     => inShiftDr_s,
+      drck_i          => drck_s,
+      tdi_i           => tdi_s,
+      tdo_o           => tdoSub_s,
+      -- Test vector I/O.
+      vectorToDut_o   => toSub_s,
+      vectorFromDut_i => difference_s
+      );
+      
+  -- This is the subtractor that interfaces to the module above.
+  difference_s <= ('0' & toSub_s(7 downto 0)) - toSub_s(15 downto 8);
 
   -- Output a byte of the test register so we can probe it externally.
   chan_io(1 downto 0) <= reg_r(1 downto 0);
