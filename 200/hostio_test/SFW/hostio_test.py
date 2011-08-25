@@ -20,7 +20,7 @@
 '''
 This program runs tests on a XuLA board whose FPGA has been loaded with
 a bitstream for exercising the interface between the FPGA and the host PC.
-This program is organized into three parts, one for each of the modules
+This program is organized into four parts, one for each of the modules
 in the hostio_test circuit:
 
 Part 1: Write and read the single register component using a stream
