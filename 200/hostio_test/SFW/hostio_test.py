@@ -36,7 +36,7 @@ Part 4: Send random numbers to a subtractor and check the result against
     the result computed in this program.
 '''
 
-from xstoolsapi import *
+from XstoolsApi import *
 import sys
 import random
 
