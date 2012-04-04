@@ -233,7 +233,7 @@ void ProcessEepromFlags(void)
         TMS_TRIS = OUTPUT_PIN;
         TDI_TRIS = OUTPUT_PIN;
         TDO_TRIS = INPUT_PIN;
-        // If uC is in charge of FPGA programming, then pull PROGB low is flash didn't config FPGA.
+        // If uC is in charge of FPGA programming, then pull PROGB low if flash didn't config FPGA.
         if(DONE == 0)
             PROGB = 0; // FPGA didn't configure, so erase it and hold it in unconfigured state.
 
@@ -309,7 +309,6 @@ void UserInit( void )
         if(DONE == 1)
             break;
     }
-
     FLSHDSBL_TRIS = OUTPUT_PIN; // Any FPGA configuration is done, so disable the flash.
 
     // Process EEPROM flags only AFTER FPGA tries to config from flash.
@@ -959,14 +958,13 @@ BF_TEST_LOOP_1:
                         blink_counter = NUM_ACTIVITY_BLINKS;   // Keep LED blinking during this command to indicate activity.
                     }
                     // Process the TMS & TDI bytes in the packet and collect the TDO bits.
-                    switch ( flags & ( PUT_TDI_MASK | PUT_TMS_MASK | GET_TDO_MASK ) )
+                    switch ( flags )
                     {
                         case GET_TDO_MASK:  // Just gather TDO bits
                             #if USE_MSSP
                             {
                                 buffer_cntr       = OutPacketLength;
                                 save_FSR0         = FSR0;
-                                save_FSR1         = FSR1;
                                 TBLPTR            = (UINT24)reverse_bits; // Setup the pointer to the bit-order table.
                                 FSR0              = (WORD)tdo;
                                 _asm
@@ -992,11 +990,10 @@ PRI_TAP_LOOP_3:
                                 MOVFF SSPBUF, TBLPTRL           // Get the TDO byte that was received and use it to index into the bit-order table.
                                 TBLRD                           // TABLAT now contains the TDO byte in the proper bit-order.
                                 MOVFF TABLAT, POSTINC0          // Store the TDO byte into the buffer and inc. the pointer.
-                                _endasm
-                                TCK = 0;
+                                _endasm                                
                                 FSR0              = save_FSR0;
-                                FSR1              = save_FSR1;
                                 tdo += OutPacketLength; // Update pointer because it's used for packet length later.
+                                TCK = 0;
                             }
                             #else
                             {
@@ -1021,7 +1018,6 @@ PRI_TAP_LOOP_3:
                             {
                                 buffer_cntr       = OutPacketLength;
                                 save_FSR0         = FSR0;
-                                save_FSR1         = FSR1;
                                 TBLPTR            = (UINT24)reverse_bits; // Setup the pointer to the bit-order table.
                                 FSR0              = (WORD)tms_tdi;
                                 _asm
@@ -1046,7 +1042,6 @@ PRI_TAP_LOOP_1:
                                 _endasm
                                 TCK = 0;
                                 FSR0              = save_FSR0;
-                                FSR1              = save_FSR1;
                             }
                             #else
                             {
