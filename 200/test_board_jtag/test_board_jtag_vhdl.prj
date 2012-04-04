@@ -1,8 +1,0 @@
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\Common.vhd"
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\RandGen.vhd"
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\SdramCntl.vhd"
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\MemTest.vhd"
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\UserInstrJtag.vhd"
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\TestBoardCore.vhd"
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\ClkGen.vhd"
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\200\test_board_jtag\test_board_jtag.vhd"

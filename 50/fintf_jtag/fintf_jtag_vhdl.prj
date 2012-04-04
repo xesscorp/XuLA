@@ -1,5 +1,0 @@
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\Common.vhd"
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\UserInstrJtag.vhd"
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\FlashCntl.vhd"
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\XuLA_lib\ClkGen.vhd"
-vhdl work "C:\xesscorp\PRODUCTS\XuLA\bitstreams\50\fintf_jtag\fintf_jtag.vhd"

@@ -85,6 +85,7 @@ begin
     r_r(23) xor r_r(22) xor r_r(21) xor r_r(16) when r_r'length = 24 else
     r_r(27) xor r_r(24)                         when r_r'length = 28 else
     r_r(31) xor r_r(30) xor r_r(29) xor r_r(9)  when r_r'length = 32 else
+--    r_r(31) xor r_r(29) xor r_r(6) xor r_r(3)  when r_r'length = 32 else
     r_r(r_r'length-1);
 
   process(clk_i)

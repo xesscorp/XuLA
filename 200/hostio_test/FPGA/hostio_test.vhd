@@ -182,7 +182,7 @@ begin
   end process;
   
   -- This module interfaces a subtractor to the JTAG port so that it can be exercised by the PC host.
-  UHostIoToAdder : HostIoToDut
+  UHostIoToSubtractor : HostIoToDut
     generic map (
       ID_G => "00000100"  -- The identifier used by the PC host to access this module.
       )

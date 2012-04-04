@@ -1,11 +1,12 @@
 FPGA_PART     := xc3s50a-4-vq100
-fpga_projects := test_board_jtag ramintfc_jtag fintf_jtag fjmem_intfc counter
+fpga_projects := test_board_jtag ramintfc_jtag fintf_jtag counter
 
 export XST_FPGA_OPTIONS_FILE ?= $(CURDIR)/../xst_fpga_options.xst
 export BITGEN_OPTIONS_FILE   ?= $(CURDIR)/bitgen_options.ut
 export UCF_FILE              ?= $(CURDIR)/../XuLA_LIB/XuLA-50.ucf
 
-.PHONY: $(fpga_projects:=.config) \
+.PHONY: $(fpga_projects:=.cfg) \
+        $(fpga_projects:=.config) \
         $(fpga_projects:=.exo) \
         $(fpga_projects:=.timing) \
         $(fpga_projects:=.clean) \
@@ -13,6 +14,7 @@ export UCF_FILE              ?= $(CURDIR)/../XuLA_LIB/XuLA-50.ucf
         $(fpga_projects:=.maintainer-clean) \
         $(fpga_projects:=.nice)
 
+cfg             : $(fpga_projects:=.cfg)           
 config          : $(fpga_projects:=.config)           
 exo             : $(fpga_projects:=.exo)
 timing          : $(fpga_projects:=.timing)
@@ -20,6 +22,9 @@ clean           : $(fpga_projects:=.clean)
 distclean       : $(fpga_projects:=.distclean)        
 maintainer-clean: $(fpga_projects:=.maintainer-clean) 
 nice            : $(fpga_projects:=.nice)             
+
+$(fpga_projects:=.cfg):
+	$(MAKE) -C $(subst .cfg,,$@) $@
 
 $(fpga_projects:=.config):
 	$(MAKE) -C $(subst .config,,$@) PART=$(FPGA_PART) $@

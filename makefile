@@ -1,6 +1,7 @@
 objects := 50 200
 
-all             : config
+all             : cfg
+cfg             : $(objects:=.cfg)
 config          : $(objects:=.config)
 exo             : $(objects:=.exo)
 timing          : $(objects:=.timing)
@@ -8,6 +9,9 @@ clean           : $(objects:=.clean)
 distclean       : $(objects:=.distclean)
 maintainer-clean: $(objects:=.maintainer-clean)
 nice            : $(objects:=.nice) XULA_LIB.nice
+
+$(objects:=.cfg):
+	$(MAKE) -C $(subst .cfg,,$@) cfg
 
 $(objects:=.config):
 	$(MAKE) -C $(subst .config,,$@) config
