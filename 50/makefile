@@ -1,5 +1,5 @@
 FPGA_PART     := xc3s50a-4-vq100
-fpga_projects := test_board_jtag ramintfc_jtag fintf_jtag counter
+fpga_projects := counter fintf_jtag ramintfc_jtag sdram_test test_board_jtag 
 
 export XST_FPGA_OPTIONS_FILE ?= $(CURDIR)/../xst_fpga_options.xst
 export BITGEN_OPTIONS_FILE   ?= $(CURDIR)/bitgen_options.ut

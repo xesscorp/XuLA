@@ -1,11 +1,11 @@
 # 
-# Project automation script for rand_test 
+# Project automation script for hostio_test 
 # 
 # Created for ISE version 13.4
 # 
 # This file contains several Tcl procedures (procs) that you can use to automate
 # your project by running from xtclsh or the Project Navigator Tcl console.
-# If you load this file (using the Tcl command: source rand_test.tcl), then you can
+# If you load this file (using the Tcl command: source hostio_test.tcl), then you can
 # run any of the procs included here.
 # 
 # This script is generated assuming your project has HDL sources.
@@ -35,8 +35,8 @@
 #        when this script was generated.
 # 
 
-set myProject "rand_test"
-set myScript "rand_test.tcl"
+set myProject "hostio_test"
+set myScript "hostio_test.tcl"
 
 # 
 # Main (top-level) routines
@@ -227,13 +227,12 @@ proc add_source_files {} {
    xfile add "../../XuLA_lib/ClkGen.vhd"
    xfile add "../../XuLA_lib/Common.vhd"
    xfile add "../../XuLA_lib/HostIo.vhd"
-   xfile add "../../XuLA_lib/RandGen.vhd"
    xfile add "../../XuLA_lib/SyncToClk.vhd"
    xfile add "../../XuLA_lib/XuLA.ucf"
-   xfile add "rand_test.vhd"
+   xfile add "hostio_test.vhd"
 
    # Set the Top Module as well...
-   project set top "Behavioral" "rand_test"
+   project set top "Behavioral" "hostio_test"
 
    puts "$myScript: project sources reloaded."
 
@@ -350,9 +349,9 @@ proc set_process_props {} {
    project set "JTAG Pin TDI" "Pull Up" -process "Generate Programming File"
    project set "JTAG Pin TDO" "Pull Up" -process "Generate Programming File"
    project set "JTAG Pin TMS" "Pull Up" -process "Generate Programming File"
-   project set "Unused IOB Pins" "Pull Down" -process "Generate Programming File"
+   project set "Unused IOB Pins" "Float" -process "Generate Programming File"
    project set "Security" "Enable Readback and Reconfiguration" -process "Generate Programming File"
-   project set "FPGA Start-Up Clock" "CCLK" -process "Generate Programming File"
+   project set "FPGA Start-Up Clock" "JTAG Clock" -process "Generate Programming File"
    project set "Done (Output Events)" "Default (4)" -process "Generate Programming File"
    project set "Drive Done Pin High" "false" -process "Generate Programming File"
    project set "Enable Outputs (Output Events)" "Default (5)" -process "Generate Programming File"
@@ -425,7 +424,7 @@ proc set_process_props {} {
    project set "Verilog Include Directories" "" -process "Synthesize - XST"
    project set "Verilog 2001" "true" -process "Synthesize - XST"
    project set "Verilog Macros" "" -process "Synthesize - XST"
-   project set "Work Directory" "C:/xesscorp/PRODUCTS/XuLA/FPGA2_clone/200/rand_test/xst" -process "Synthesize - XST"
+   project set "Work Directory" "C:/xesscorp/PRODUCTS/XuLA/FPGA2_clone/200/hostio_test/xst" -process "Synthesize - XST"
    project set "Write Timing Constraints" "false" -process "Synthesize - XST"
    project set "Other XST Command Line Options" "" -process "Synthesize - XST"
    project set "Auto Implementation Compile Order" "true"
@@ -439,7 +438,7 @@ proc set_process_props {} {
    project set "Mux Style" "Auto" -process "Synthesize - XST"
    project set "RAM Style" "Auto" -process "Synthesize - XST"
    project set "Maximum Number of Lines in Report" "1000" -process "Generate Text Power Report"
-   project set "Output File Name" "rand_test" -process "Generate IBIS Model"
+   project set "Output File Name" "hostio_test" -process "Generate IBIS Model"
    project set "Timing Mode" "Non Timing Driven" -process "Map"
    project set "Generate Asynchronous Delay Report" "false" -process "Place & Route"
    project set "Generate Clock Region Report" "false" -process "Place & Route"

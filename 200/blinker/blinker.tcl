@@ -226,7 +226,6 @@ proc add_source_files {} {
 
    xfile add "blinker.ucf"
    xfile add "blinker.vhd"
-   xfile add "blinkerTestBench.vhd"
 
    # Set the Top Module as well...
    

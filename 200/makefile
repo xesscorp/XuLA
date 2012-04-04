@@ -1,5 +1,5 @@
 FPGA_PART     := xc3s200a-4-vq100
-fpga_projects := test_board_jtag ramintfc_jtag fintf_jtag counter
+fpga_projects := blinker counter fast_blinker fintf_jtag hostio_test ramintfc_jtag rand_test sdram_test test_board_jtag vga_bram 
 
 export XST_FPGA_OPTIONS_FILE ?= $(CURDIR)/../xst_fpga_options.xst
 export BITGEN_OPTIONS_FILE   ?= $(CURDIR)/bitgen_options.ut

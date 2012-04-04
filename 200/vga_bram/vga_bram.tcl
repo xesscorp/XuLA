@@ -1,7 +1,7 @@
 # 
 # Project automation script for vga_bram 
 # 
-# Created for ISE version 13.1
+# Created for ISE version 13.4
 # 
 # This file contains several Tcl procedures (procs) that you can use to automate
 # your project by running from xtclsh or the Project Navigator Tcl console.
@@ -233,6 +233,10 @@ proc add_source_files {} {
    xfile add "ipcore_dir/ScreenRam.xco"
    xfile add "top.ucf"
    xfile add "top.vhd"
+   project set top "top"
+   puts ""
+   puts "WARNING: project contains IP cores, synthesis will fail if any of the cores require regenerating."
+   puts ""
 
    # Set the Top Module as well...
    
