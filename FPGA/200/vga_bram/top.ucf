@@ -1,0 +1,12 @@
+#net Rgb<0>  loc=c9;
+#net Rgb<1>  loc=e7;
+#net Rgb<2>  loc=d5;
+#net Rgb<3>  loc=a8;
+#net Rgb<4>  loc=a5;
+#net Rgb<5>  loc=c3;
+#net Rgb<6>  loc=c8;
+#net Rgb<7>  loc=d6;
+#net Rgb<8>  loc=b1;
+#net Hsync_n loc=b7;
+#net Vsync_n loc=d8;
+#net Clk     loc=t9;

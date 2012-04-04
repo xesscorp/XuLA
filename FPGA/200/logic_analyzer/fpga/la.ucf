@@ -1,0 +1,161 @@
+##################################################################################
+##  la.ucf
+##
+##  Author: Michael "Mr. Sump" Poppitz
+##
+##  Details: http://sump.org/projects/analyzer/
+##
+##  Contains assignment and iostandard information for
+##  all used pins as well as timing and area constraints.
+##################################################################################
+
+net a<0>	loc=p49;
+net a<1>	loc=p48;
+net a<2>	loc=p46;
+net a<3>	loc=p35;
+net a<4>	loc=p27;
+net a<5>	loc=p25;
+net a<6>	loc=p24;
+net a<7>	loc=p23;
+net a<8>	loc=p28;
+net a<9>	loc=p29;
+net a<10>	loc=p51;
+net a<11>	loc=p30;
+net bs	loc=p53;
+net cas_b	loc=p60;
+net chanClk	loc=p41;
+net chan<0>	loc=p39;
+net chan<1>	loc=p43;
+net chan<2>	loc=p44;
+net chan<3>	loc=p50;
+net chan<4>	loc=p52;
+net chan<5>	loc=p56;
+net chan<6>	loc=p57;
+net chan<7>	loc=p61;
+net chan<8>	loc=p62;
+net chan<9>	loc=p68;
+net chan<10>	loc=p72;
+net chan<11>	loc=p73;
+net chan<12>	loc=p82;
+net chan<13>	loc=p83;
+net chan<14>	loc=p84;
+net chan<15>	loc=p88;
+net chan<16>	loc=p37;
+net chan<17>	loc=p36;
+net chan<18>	loc=p33;
+net chan<19>	loc=p32;
+net chan<20>	loc=p21;
+net chan<21>	loc=p20;
+net chan<22>	loc=p19;
+net chan<23>	loc=p13;
+net chan<24>	loc=p12;
+net chan<25>	loc=p7;
+net chan<26>	loc=p4;
+net chan<27>	loc=p3;
+net chan<28>	loc=p97;
+net chan<29>	loc=p94;
+net chan<30>	loc=p93;
+net chan<31>	loc=p89;
+net d<0>	loc=p90;
+net d<1>	loc=p77;
+net d<2>	loc=p78;
+net d<3>	loc=p85;
+net d<4>	loc=p86;
+net d<5>	loc=p71;
+net d<6>	loc=p70;
+net d<7>	loc=p65;
+net d<8>	loc=p16;
+net d<9>	loc=p15;
+net d<10>	loc=p10;
+net d<11>	loc=p9;
+net d<12>	loc=p6;
+net d<13>	loc=p5;
+net d<14>	loc=p99;
+net d<15>	loc=p98;
+net dqm	loc=p34;
+net fpgaClk	loc=p40;
+net ras_b	loc=p59;
+net sdramClk	loc=p31;
+net we_b	loc=p64;
+
+net a<0>       IOSTANDARD = LVTTL;
+net a<1>       IOSTANDARD = LVTTL;
+net a<2>       IOSTANDARD = LVTTL;
+net a<3>       IOSTANDARD = LVTTL;
+net a<4>       IOSTANDARD = LVTTL;
+net a<5>       IOSTANDARD = LVTTL;
+net a<6>       IOSTANDARD = LVTTL;
+net a<7>       IOSTANDARD = LVTTL;
+net a<8>       IOSTANDARD = LVTTL;
+net a<9>       IOSTANDARD = LVTTL;
+net a<10>      IOSTANDARD = LVTTL;
+net a<11>      IOSTANDARD = LVTTL;
+net bs         IOSTANDARD = LVTTL;
+net cas_b      IOSTANDARD = LVTTL;
+net chanClk   IOSTANDARD = LVTTL;
+net chan<0>    IOSTANDARD = LVTTL;
+net chan<1>    IOSTANDARD = LVTTL;
+net chan<2>    IOSTANDARD = LVTTL;
+net chan<3>    IOSTANDARD = LVTTL;
+net chan<4>    IOSTANDARD = LVTTL;
+net chan<5>    IOSTANDARD = LVTTL;
+net chan<6>    IOSTANDARD = LVTTL;
+net chan<7>    IOSTANDARD = LVTTL;
+net chan<8>    IOSTANDARD = LVTTL;
+net chan<9>    IOSTANDARD = LVTTL;
+net chan<10>   IOSTANDARD = LVTTL;
+net chan<11>   IOSTANDARD = LVTTL;
+net chan<12>   IOSTANDARD = LVTTL;
+net chan<13>   IOSTANDARD = LVTTL;
+net chan<14>   IOSTANDARD = LVTTL;
+net chan<15>   IOSTANDARD = LVTTL;
+net chan<16>   IOSTANDARD = LVTTL;
+net chan<17>   IOSTANDARD = LVTTL;
+net chan<18>   IOSTANDARD = LVTTL;
+net chan<19>   IOSTANDARD = LVTTL;
+net chan<20>   IOSTANDARD = LVTTL;
+net chan<21>   IOSTANDARD = LVTTL;
+net chan<22>   IOSTANDARD = LVTTL;
+net chan<23>   IOSTANDARD = LVTTL;
+net chan<24>   IOSTANDARD = LVTTL;
+net chan<25>   IOSTANDARD = LVTTL;
+net chan<26>   IOSTANDARD = LVTTL;
+net chan<27>   IOSTANDARD = LVTTL;
+net chan<28>   IOSTANDARD = LVTTL;
+net chan<29>   IOSTANDARD = LVTTL;
+net chan<30>   IOSTANDARD = LVTTL;
+net chan<31>   IOSTANDARD = LVTTL;
+net d<0>       IOSTANDARD = LVTTL;
+net d<1>       IOSTANDARD = LVTTL;
+net d<2>       IOSTANDARD = LVTTL;
+net d<3>       IOSTANDARD = LVTTL;
+net d<4>       IOSTANDARD = LVTTL;
+net d<5>       IOSTANDARD = LVTTL;
+net d<6>       IOSTANDARD = LVTTL;
+net d<7>       IOSTANDARD = LVTTL;
+net d<8>       IOSTANDARD = LVTTL;
+net d<9>       IOSTANDARD = LVTTL;
+net d<10>      IOSTANDARD = LVTTL;
+net d<11>      IOSTANDARD = LVTTL;
+net d<12>      IOSTANDARD = LVTTL;
+net d<13>      IOSTANDARD = LVTTL;
+net d<14>      IOSTANDARD = LVTTL;
+net d<15>      IOSTANDARD = LVTTL;
+net dqm        IOSTANDARD = LVTTL;
+net fpgaClk   IOSTANDARD = LVTTL;
+net ras_b      IOSTANDARD = LVTTL;
+net sdramClk  IOSTANDARD = LVTTL;
+net we_b       IOSTANDARD = LVTTL;
+
+NET "fpgaClk" TNM_NET = "fpgaClk";
+TIMESPEC "TS_fpga_clk" = PERIOD "fpgaClk" 83 ns HIGH 50%;
+
+# ignore paths resulting from flags as those will
+# not change during time critical operations
+NET           "Inst_core/Inst_flags/demux"    TIG;
+NET           "Inst_core/Inst_flags/filter"   TIG;
+NET           "Inst_core/Inst_flags/inverted" TIG;
+NET           "Inst_core/Inst_flags/external" TIG;
+
+#INST         "Inst_sync/*"                   AREA_GROUP  = "in";
+#AREA_GROUP   "in"                            COMPRESSION = 1;
