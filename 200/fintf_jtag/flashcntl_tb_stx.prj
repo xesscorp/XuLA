@@ -1,3 +1,0 @@
-vhdl isim_temp "../XuLA_lib/common.vhd"
-vhdl isim_temp "../XuLA_lib/flashcntl.vhd"
-vhdl isim_temp "flashcntl_tb.vhd"
