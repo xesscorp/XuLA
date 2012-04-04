@@ -1,0 +1,119 @@
+Design Considerations
+========================================================================
+1. Resistor in series with oscillator driver to reduce drive to crystal.
+   Shorted to 0 Ohms by default.
+2. A single uC pin is used to sense the firmware update jumper and to
+   disable the FPGA config flash.  Upon powerup, uC lowers PROG# to 
+   disable FPGA and then reads the firmware update pin.  If low, then
+   jump into routine that updates firmware via USB.  If not low
+   (built-in pullup on uC), then release pin so FPGA can configure
+   itself from flash.  Once FPGA DONE pin goes high, disable flash
+   by pulling this pin high.
+3. SR flip-flop in uC is used to generate 12 MHz clock for FPGA.
+   INT1 pin is pulled high and then the SR is set/reset everytime
+   the uC clock pulses.
+4. The boot program for the uC can be loaded using the USB connector
+   and the MCLR# test-point for applying the programming voltage.
+5. uC is powered from 5V thru the USB connector.  Its internal
+   regulator sets the operating voltage for the uC at 3.3V.
+6. FPGA DONE pin connects to INT0 pin of uC so it can react
+   quickly when the FPGA completes configuration.
+7. SDRAM CS# and CKE are tied low and high, respectively, to
+   permanently enable SDRAM.  This saves FPGA pins.
+8. BS pins are tied together to save FPGA pins.  This halves the
+   usable SDRAM storage.
+9. DQM pins are tied together to save FPGA pins.  Handling single
+   bytes in the 16-bit SDRAM word is not needed.
+10. The SPI flash connects to the required FPGA configuration pins.
+    These FPGA pins cannot also connect to the external cannel I/O
+	or else an external connection might block configuration.
+	Connections to SDRAM pins are OK since SDRAM won't be active
+	during configuration.
+11. Resistor in series between FPGA pin and flash CE#.  The FPGA
+    can lower the CE# pin during configuration as long as the uC
+	tristates its flash disable pin.  Once configuration is done,
+	the uC pulls the flash CE# pin high and the FPGA can toggle its
+	pin without turning the flash on and off.
+12. FPGA pins are assigned to the external channel I/O and the
+    SDRAM using the following criteria:
+	a. Arrange them to minimize connection length.
+	b. All input-only pins are assigned to the channel I/O pins.
+	c. Configuration pins like M0, M1, M2, V0, V1, V2, CSO_B,
+	   CSI_B, INIT_B, DIN, CCLK, PUDC_B are kept off the channel
+	   I/O pins so external connections cannot block configuration.
+	d. Keep channel I/O pins on the same differential pair so they
+	   can be clocked by the sampling clock.  Keep SDRAM pins on the
+	   same differential pair so they can be clocked by the SDRAM clock.
+	   This allows their registers to be packed into the CLB flip-flops.
+13. Level translation is done using series resistors between the 3.3V uC
+    pins and the 2.5V FPGA JTAG and dedicated configuration pins.
+14. Jumper between USB 5V pin and 5V PCB supply allows powering the
+    board from external power supply.
+	
+	
+	
+DESIGN CHANGES (0.1 -> 0.2)
+========================================================================
+1. Move and thin shorts on +5V, +3.3V and +1.2V jumpers
+   so they are easier to cut without cutting nearby wires.
+2. Power uC off of +3.3V instead of +5V.
+3. Reduce size of +5V polygon.
+4. Put series resistor in fpga-clk trace near uC so 3.3V output can drive
+   2.5V input.
+5. Allow either size of SPI flash (150 or 208 mil).
+6. Put 0.1uF bypass cap to 3.3V near U2.
+7. Separate FMW_UPD# and FLSH_DSBL onto separate uC pins.
+8. Possibly a pullup resistor is needed on the serial flash chip-enable
+   so it tracks the +3.3V supply upon power-up.
+9. Remove 1.2V and 3.3V sense circuits.
+10. Add USB bus voltage sense circuit.
+11. Generate FPGACLK by PWM; remove +3.3V on INT1 pin.
+12. Input of U7 should come from +3.3V plane, not directly from output
+    of U6.
+13. Replace FAN1112 (U7) with ZLDO1117-1.2V.
+14. Place a series resistor between flash SO pin and rest of A10 net so
+    it can't drive against the FPGA pin.
+15. Replace USB-A connector with USB-B mini connector.
+16. Use 3.3V for VCCAUX instead of 2.5V.  Remove 2.5V regulator.
+17. Tie DQMH, DQML low on the SDRAM to free a pin on the FPGA. Remove DQM
+    net.  Move the following FPGA pins:
+    A3 -> P31; CHAN17,16 -> P34,P35; CHAN0,1 -> P36,P37; CHAN2 -> P39;
+    FPGA-CLK -> P43; CHAN-CLK -> P44.  Place SDRAM-CLK1 on pins P40, P41.
+18. Place MCLR# on header pin for XuLA reset and for boot programming.
+	
+DESIGN CHANGES (0.2 -> 0.3)
+========================================================================
+1. Add 510 Ohm pulldown to TCK pin of FPGA.
+
+
+DESIGN IDEAS
+=========================================================================
+1. Use single-row headers and move them together slightly to reduce
+   board width to 0.9".
+
+
+Add-ONS
+=========================================================================
+1. To insert XuLa into solderless breadboard, use Aries 20-0600-10
+   strip-line headers with coined contacts.
+2. New Age Enclosures utility box (Mouser#: 789-S3A-272008).  Use 2mm
+   connector for logic probes (Digikey#: 455-1787-ND, 455-1182-ND).
+
+
+
+ASSEMBLY & TEST PLAN
+=========================================================================
+1. Cut traces to +5V jumper to isolate USB 5V and U6 from 5V plane.
+2. Attach J1, U6, C1, C4, C24 U2 and R1.
+3. Jump 3.3V plane to 5V plane.
+4. Jump pin 1 (5V) of J1 to pin 3 (Vin) of U6.
+5. Connect to ICDPGMR and ICD and program uC with USB firmware downloader..
+6. Attach pin 17 (VUSB) of U2 to +3.3V by using pad of C8.
+7. Attach LED1, R4, C2, C3 and Q1.
+8. Attach XuLA to USB port and download user program.
+9. Attach U1, U5, U7, C5, C35, C16, C15, C28, C7, C9, C27, C25, C11, C10, C2, C6.
+10. Use UrJTAG to query FPGA.
+11. Attach U3, C12, C14, C19, C13, C32, C18, C34, C20, C31, C21, C33, C22.
+12. Use UrJTAG to R/W SDRAM.
+13. Attach U4 and R5.
+14. Write to SPI flash and then reconfigure FPGA from flash.

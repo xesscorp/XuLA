@@ -1,0 +1,269 @@
+{
+	"items": [
+		{
+			"designator": "C1",
+			"value": "GRM188F51A475ZE20J",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C2",
+			"value": "GRM1885C1H100JA01D",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C3",
+			"value": "GRM1885C1H100JA01D",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C4",
+			"value": "GRM188F51A475ZE20J",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C5",
+			"value": "GRM188F51A475ZE20J",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C6",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C7",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C8",
+			"value": "C1608X7R1C474K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C9",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C10",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C11",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C12",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C13",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C14",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C15",
+			"value": "C1005Y5V1H103Z",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C16",
+			"value": "C1005Y5V1H103Z",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C17",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C18",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C19",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C20",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C21",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C22",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C23",
+			"value": "C1608X7R1C104K",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C24",
+			"value": "GRM32CF51A226ZA01L",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C25",
+			"value": "C1005Y5V1H103Z",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C26",
+			"value": "C1005Y5V1H103Z",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C27",
+			"value": "C1005Y5V1H103Z",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C28",
+			"value": "C1005Y5V1H103Z",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C29",
+			"value": "C1005Y5V1H103Z",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C30",
+			"value": "C1005Y5V1H103Z",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C31",
+			"value": "C1005Y5V1H103Z",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C32",
+			"value": "C1005Y5V1H103Z",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C33",
+			"value": "C1005Y5V1H103Z",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C34",
+			"value": "C1005Y5V1H103Z",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "C35",
+			"value": "GRM32CF51A226ZA01L",
+			"description": "CAPACITOR, American symbol"
+		},
+		{
+			"designator": "LED1",
+			"value": "LTST-C194KGKT",
+			"description": "LED"
+		},
+		{
+			"designator": "Q1",
+			"value": "ABM8G-12.000MHZ-B4Y-T",
+			"description": "Crystal Chip"
+		},
+		{
+			"designator": "R1",
+			"value": "301-5.1K-RC",
+			"description": "RESISTOR, American symbol"
+		},
+		{
+			"designator": "R2",
+			"value": "0",
+			"description": "RESISTOR, American symbol"
+		},
+		{
+			"designator": "R4",
+			"value": "741X163101JP",
+			"description": "Resistor 8-pack"
+		},
+		{
+			"designator": "R5",
+			"value": "742C083102JP",
+			"description": "Resistor 4-pack"
+		},
+		{
+			"designator": "R6",
+			"value": "301-47K-RC",
+			"description": "RESISTOR, American symbol"
+		},
+		{
+			"designator": "R7",
+			"value": "301-330K-RC",
+			"description": "RESISTOR, American symbol"
+		},
+		{
+			"designator": "R8",
+			"value": "301-680K-RC",
+			"description": "RESISTOR, American symbol"
+		},
+		{
+			"designator": "R9",
+			"value": "301-110-RC",
+			"description": "RESISTOR, American symbol"
+		},
+		{
+			"designator": "R10",
+			"value": "301-1.0K-RC",
+			"description": "RESISTOR, American symbol"
+		},
+		{
+			"designator": "U1",
+			"value": "XC3S200A-4VQG100C",
+			"description": "Xilinx Spartan 3A 200K-gate FPGA in VQ100 package"
+		},
+		{
+			"designator": "U2",
+			"value": "PIC18F14K50-I/SS",
+			"description": "Microchip PIC 18F14K50 Microcontroller"
+		},
+		{
+			"designator": "U3",
+			"value": "W9812G6JH-6",
+			"description": "8M x 16 SDRAM128Mb synchronous DRAM."
+		},
+		{
+			"designator": "U5",
+			"value": "W25X20BVSNIG",
+			"description": "Winbond W25X10BV/20BV/40BV SPI Flash"
+		},
+		{
+			"designator": "U6",
+			"value": "ZLDO1117G33TA",
+			"description": "+3.3V Linear Regulator"
+		},
+		{
+			"designator": "U7",
+			"value": "ZLDO1117G12TA",
+			"description": "+1.2V Linear Regulator"
+		},
+		{
+			"designator": "X1",
+			"value": "UX60SC-MB-5ST",
+			"description": "MINI USB Connector"
+		}
+	]
+}
