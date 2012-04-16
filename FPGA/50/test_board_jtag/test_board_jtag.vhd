@@ -14,20 +14,19 @@
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
 --
--- ©1997-2010 - X Engineering Software Systems Corp. (www.xess.com)
+-- ©1997-2012 - X Engineering Software Systems Corp. (www.xess.com)
 ----------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------
 -- Test board via JTAG.
--- See userinstr_jtag.vhd for details of operation.
+----------------------------------------------------------------------------------
 
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.all;
-use IEEE.STD_LOGIC_ARITH.all;
-use IEEE.STD_LOGIC_UNSIGNED.all;
+use IEEE.numeric_std.all;
 use work.CommonPckg.all;
-use work.UserInstrJtagPckg.all;
+use work.HostIoPckg.HostIoToDut;
 use work.TestBoardCorePckg.all;
 use work.ClkgenPckg.all;
 
@@ -51,8 +50,8 @@ entity test_board_jtag is
     END_ADDR_G    : natural := 16#7F_FFFF#;
     -- beginning and ending address for the memory tester
     BEG_TEST_G    : natural := 16#00_0000#;
---    END_TEST_G    : natural := 16#40_0000#
-    END_TEST_G    : natural := 16#3F_FFFF#
+--    END_TEST_G    : natural := 16#40_0000# -- Board will fail with this.
+    END_TEST_G    : natural := 16#3F_FFFF#  -- Board will pass with this.
     );
   port(
     fpgaClk_i : in    std_logic;  -- main clock input from external clock source
@@ -71,68 +70,31 @@ end entity;
 architecture arch of test_board_jtag is
 
   constant FREQ_G : real := (BASE_FREQ_G * real(CLK_MUL_G)) / real(CLK_DIV_G);
-  signal clk      : std_logic;
+  signal clk_s    : std_logic;
 
-  -- signals to/from the JTAG BSCAN module
-  signal bscan_drck   : std_logic;      -- JTAG clock from BSCAN module
-  signal bscan_reset  : std_logic;      -- true when BSCAN module is reset
-  signal bscan_sel    : std_logic;      -- true when BSCAN module selected
-  signal bscan_shift  : std_logic;  -- true when TDI & TDO are shifting data
-  signal bscan_update : std_logic;      -- BSCAN TAP is in update-dr state
-  signal bscan_tdi    : std_logic;      -- data received on TDI pin
-  signal bscan_tdo    : std_logic;      -- scan data sent to TDO pin
-
-  signal run_test      : std_logic;     -- set to run the test
-  signal run           : std_logic;  -- run test either from JTAG instr or manual button
-  signal test_progress : std_logic_vector(1 downto 0);  -- progress of the test
-  signal test_failed   : std_logic;  -- true if an error was found during the test
-
+  signal reset_s         : std_logic;
+  signal test_ctrl_s     : std_logic_vector(0 downto 0);
+  signal test_progress_s : std_logic_vector(1 downto 0);  -- progress of the test
+  signal test_failed_s   : std_logic;  -- true if an error was found during the test
+  signal signature_s     : std_logic_vector(31 downto 0) := x"A50001A5";
+  signal test_status_s   : std_logic_vector(34 downto 0);
 begin
 
   u0 : Clkgen
     generic map (BASE_FREQ_G => BASE_FREQ_G, CLK_MUL_G => CLK_MUL_G, CLK_DIV_G => CLK_DIV_G)
     port map(I               => fpgaClk_i, O => sdClk_o);
 
-  clk <= sdClkFb_i;  -- main clock is SDRAM clock fed back into FPGA
+  clk_s <= sdClkFb_i;  -- main clock is SDRAM clock fed back into FPGA
 
-  -- boundary-scan interface to FPGA JTAG port
-  u_bscan : BSCAN_SPARTAN3
+  reset_s       <= test_ctrl_s(0);
+  test_status_s <= signature_s & test_failed_s & test_progress_s;
+
+  u1 : HostIoToDut
+    generic map(SIMPLE_G => true)
     port map(
-      DRCK1  => bscan_drck,             -- JTAG clock
-      RESET  => bscan_reset,            -- true when JTAG TAP FSM is reset
-      SEL1   => bscan_sel,  -- USER1 instruction enables execution of the RAM interface
-      SHIFT  => bscan_shift,  -- true when JTAG TAP FSM is in the SHIFT-DR state
-      TDI    => bscan_tdi,  -- data bits from the PC arrive through here
-      UPDATE => bscan_update,
-      TDO1   => bscan_tdo,  -- LSbit of the tdo register outputs onto TDO pin and to the PC
-      TDO2   => '0'         -- not using this input, so just hold it low
+      vectorFromDut_i => test_status_s,
+      vectorToDut_o   => test_ctrl_s
       );
-
-  -- JTAG interface
-  u1 : UserInstrJtag
-    generic map(
-      FPGA_TYPE_G         => SPARTAN3_G,
-      ENABLE_TEST_INTFC_G => true,
-      DATA_WIDTH_G        => DATA_WIDTH_G
-      )
-    port map(
-      clk           => clk,
-      bscan_drck    => bscan_drck,
-      bscan_reset   => bscan_reset,
-      bscan_sel     => bscan_sel,
-      bscan_shift   => bscan_shift,
-      bscan_update  => bscan_update,
-      bscan_tdi     => bscan_tdi,
-      bscan_tdo     => bscan_tdo,
-      begun         => YES,                 -- don't care
-      done          => YES,                 -- don't care
-      din           => "0000000000000000",  -- don't care
-      run_test      => run_test,
-      test_progress => test_progress,
-      test_failed   => test_failed
-      );
-
-  run <= run_test;  -- run test when instruction is given or button is pressed
 
   -- board diagnostic unit
   u2 : TestBoardCore
@@ -149,15 +111,16 @@ begin
       END_TEST_G    => END_TEST_G
       )
     port map(
-      clk_i      => clk,
+      rst_i      => reset_s,
+      clk_i      => clk_s,
       sdRas_bo   => sdRas_bo,
       sdCas_bo   => sdCas_bo,
       sdWe_bo    => sdWe_bo,
       sdBs_o(0)  => sdBs_o,
       sdAddr_o   => sdAddr_o,
       sdData_io  => sdData_io,
-      progress_o => test_progress,
-      err_o      => test_failed
+      progress_o => test_progress_s,
+      err_o      => test_failed_s
       );
 
 end architecture;

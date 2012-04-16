@@ -100,11 +100,11 @@ architecture arch of MemTest is
     EMPTY_PIPE,                         -- empty read pipeline
     STOP                                -- stop and indicate memory status
     );
-  signal state_r, state_x : testState;  -- state register and next state
+  signal state_r, state_x : testState := INIT;  -- state register and next state
 
   -- registers
   signal addr_r, addr_x : unsigned(addr_o'range);  -- address register
-  signal err_r, err_x   : std_logic;               -- error flag
+  signal err_r, err_x   : std_logic := NO;               -- error flag
 
   -- internal signals
   signal ld          : std_logic;  -- load random number gen with seed value
@@ -128,6 +128,7 @@ begin
   rand <= rand1;
 --  rand <= (others=>'0');
 --  rand <= std_logic_vector(addr_r(15 downto 0));
+--  rand <= std_logic_vector(TO_UNSIGNED(17,16));
 
   -- connect internal registers to external busses 
   -- memory address bus driven by memory address register     
