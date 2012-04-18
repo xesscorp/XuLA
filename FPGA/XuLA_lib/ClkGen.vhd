@@ -44,6 +44,7 @@ end package;
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.all;
+use work.CommonPckg.all;
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx primitives in this code.
@@ -63,6 +64,8 @@ entity ClkGen is
 end entity;
 
 architecture arch of ClkGen is
+  signal genClkP_s : std_logic;
+  signal genClkN_s : std_logic;
 begin
 
   u0 : DCM_SP
@@ -81,8 +84,21 @@ begin
       STARTUP_WAIT          => false)  --  Delay configuration DONE until DCM LOCK, TRUE/FALSE
     port map (
       RST   => '0',                     -- DCM asynchronous reset input
-      CLKIN => i,                       -- Clock input (from IBUFG, BUFG or DCM)
-      CLKFX => o                        -- Generated clock output
+      CLKIN => i,                -- Clock input (from IBUFG, BUFG or DCM)
+      CLKFX => genClkP_s,                        -- Generated clock output
+      CLKFX180 => genClkN_s
+      );
+      
+  u1: ODDR2
+    port map (
+      Q => o,
+      C0 => genClkP_s,
+      C1 => genClkN_s,
+      CE => YES,
+      D0 => ONE,
+      D1 => ZERO,
+      R => ZERO,
+      S => ZERO
       );
 
 end architecture;
