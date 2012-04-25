@@ -1,7 +1,7 @@
 [HEADER]
 magic_cookie={66E99B07-E706-4689-9E80-9B2582898A13}
 file_version=1.0
-device=PIC18F27J53
+device=PIC18F14K50
 [PATH_INFO]
 BuildDirPolicy=BuildDirIsProjectDir
 dir_src=
@@ -124,8 +124,8 @@ file_018=C:\Microchip Solutions v2010-08-04\Microchip\Include\USB\usb.h
 file_019=C:\Microchip Solutions v2010-08-04\Microchip\Include\GenericTypeDefs.h
 file_020=utils.h
 file_021=blinker.h
-file_022=C:\xesscorp\PRODUCTS\XuLA\firmware\XuLA_boot\eeprom_flags.h
-file_023=version.h
+file_022=version.h
+file_023=eeprom_flags.h
 file_024=18f14k50_g.lkr
 [SUITE_INFO]
 suite_guid={5B7D72DD-9861-47BD-9F60-2BE967BF8416}
