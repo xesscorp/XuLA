@@ -894,7 +894,7 @@ begin
   end generate;
 
   -- Scan the bits from the host looking for an instruction header.
-  UHdrScannner : HostIoHdrScanner
+  UHdrScanner : HostIoHdrScanner
     generic map (
       ID_G               => ID_G,
       PYLD_CNTR_LENGTH_G => PYLD_CNTR_LENGTH_G
