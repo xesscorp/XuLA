@@ -47,7 +47,7 @@ package HostIoPckg is
       TAP_USER_INSTR_G : TapUserInstr_t := USER1  -- USER instruction this module responds to.
       );
     port (
-      -- Interface to HostIoHdrScannner.
+      -- Interface to HostIoHdrScanner.
       inShiftDr_o : out std_logic;  -- True when USER JTAG instruction is active and the TAP FSM is in the Shift-DR state.
       drck_o      : out std_logic;  -- Bit clock. TDI clocked in on rising edge, TDO sampled on falling edge.
       tdi_o       : out std_logic;  -- Bit from the host to the FPGA application logic.
@@ -81,7 +81,7 @@ package HostIoPckg is
       );
   end component;
 
-  component HostIoHdrScannner is
+  component HostIoHdrScanner is
     generic (
       ID_G               : std_logic_vector := "11111111";  -- The ID this module responds to.
       PYLD_CNTR_LENGTH_G : natural          := 32  -- Length of payload bit counter.
@@ -198,7 +198,7 @@ entity BscanToHostIo is
     TAP_USER_INSTR_G : TapUserInstr_t := USER1  -- USER instruction this module responds to.
     );
   port (
-    -- Interface to HostIoHdrScannner.
+    -- Interface to HostIoHdrScanner.
     inShiftDr_o : out std_logic;  -- True when USER JTAG instruction is active and the TAP FSM is in the Shift-DR state.
     drck_o      : out std_logic;  -- Bit clock. TDI clocked in on rising edge, TDO sampled on falling edge.
     tdi_o       : out std_logic;  -- Bit from the host to the FPGA application logic.
@@ -283,9 +283,9 @@ begin
         JTAG_CHAIN => TapUserInstr_t'pos(TAP_USER_INSTR_G)
         )
       port map(
-        DRCK  => drck_o,        -- data clock after USER instruction received.
+        DRCK  => drck_o,        -- Data clock after USER instruction received.
         RESET => bscanReset_s,          -- JTAG TAP FSM reset.
-        SEL   => bscanSel_s,            -- USER1 instruction enables user-I/O.
+        SEL   => bscanSel_s,    -- True when USER instruction enters IR.
         SHIFT => bscanShift_s,  -- True when JTAG TAP FSM is in the SHIFT-DR state.
         TDI   => tdi_o,         -- Data bits from the host arrive through here.
         TDO   => tdo_s  -- Bits from the FPGA app. logic go to the TDO pin and back to the host.
@@ -326,7 +326,7 @@ use IEEE.STD_LOGIC_1164.all;
 use IEEE.STD_LOGIC_UNSIGNED.all;
 use work.CommonPckg.all;
 
-entity HostIoHdrScannner is
+entity HostIoHdrScanner is
   generic (
     ID_G               : std_logic_vector := "11111111";  -- The ID this module responds to.
     PYLD_CNTR_LENGTH_G : natural          := 32  -- Length of payload bit counter.
@@ -343,7 +343,7 @@ entity HostIoHdrScannner is
 end entity;
 
 
-architecture arch of HostIoHdrScannner is
+architecture arch of HostIoHdrScanner is
   -- The header register consists of the ID field and a field with the # of payload bits that follow.
   signal id_r       : std_logic_vector(ID_G'high downto ID_G'low);
   signal pyldCntr_r : std_logic_vector(pyldCntr_o'range);
@@ -393,7 +393,7 @@ end architecture;
 -- This module interfaces with BscanToHostIo to perform read/write operations to memory devices.
 --
 -- Write operations:
--- Once the HostIoHdrScannner module extracts the ID and number of payload bits,
+-- Once the HostIoHdrScanner module extracts the ID and number of payload bits,
 -- a write operation is activated by the opcode in the first two bits in the payload.
 -- This module then extracts a starting address from the payload bitstream.
 -- Then this module extracts data words from the payload bitstream and writes them to
@@ -406,7 +406,7 @@ end architecture;
 -- Data: |xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|   Data1  | ..... | DataN        |
 --
 -- Read operations:
--- Once the HostIoHdrScannner module extracts the ID and number of payload bits,
+-- Once the HostIoHdrScanner module extracts the ID and number of payload bits,
 -- a read operation is activated by the opcode in the first two bits in the payload.
 -- This module then extracts a starting address from the payload bitstream.
 -- Then this module reads data from the memory device at sequentially increasing addresses
@@ -419,7 +419,7 @@ end architecture;
 -- Data: |xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|  Data1  | ... | DataN        |
 --
 -- Parameter query operation:
--- Once the HostIoHdrScannner module extracts the ID and number of payload bits,
+-- Once the HostIoHdrScanner module extracts the ID and number of payload bits,
 -- a parameter query operation is activated by the opcode in the first two bits in the payload.
 -- This module then places the width of the memory address and data buses into a register
 -- and shifts it serially back to the host.
@@ -479,7 +479,7 @@ architecture arch of HostIoToRamCore is
 begin
 
   -- Scan the bits from the host looking for an instruction header.
-  UHdrScannner : HostIoHdrScannner
+  UHdrScannner : HostIoHdrScanner
     generic map (
       ID_G               => ID_G,
       PYLD_CNTR_LENGTH_G => PYLD_CNTR_LENGTH_G
@@ -787,7 +787,7 @@ end architecture;
 -- This module interfaces with BscanToHostIo to send/receive test vectors to/from a device-under-test (DUT).
 --
 -- Write operations:
--- Once the HostIoHdrScannner module extracts the ID and number of payload bits,
+-- Once the HostIoHdrScanner module extracts the ID and number of payload bits,
 -- a write operation is activated by the opcode in the first two bits in the payload.
 -- This module then extracts a starting address from the payload bitstream.
 -- Then this module extracts data words from the payload bitstream and writes them to
@@ -800,7 +800,7 @@ end architecture;
 -- Data: |xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|   Data1  | ..... | DataN        |
 --
 -- Read operations:
--- Once the HostIoHdrScannner module extracts the ID and number of payload bits,
+-- Once the HostIoHdrScanner module extracts the ID and number of payload bits,
 -- a read operation is activated by the opcode in the first two bits in the payload.
 -- This module then extracts a starting address from the payload bitstream.
 -- Then this module reads data from the memory device at sequentially increasing addresses
@@ -813,7 +813,7 @@ end architecture;
 -- Data: |xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|  Data1  | ... | DataN        |
 --
 -- Parameter query operation:
--- Once the HostIoHdrScannner module extracts the ID and number of payload bits,
+-- Once the HostIoHdrScanner module extracts the ID and number of payload bits,
 -- a parameter query operation is activated by the opcode in the first two bits in the payload.
 -- This module then places the width of the memory address and data buses into a register
 -- and shifts it serially back to the host.
@@ -894,7 +894,7 @@ begin
   end generate;
 
   -- Scan the bits from the host looking for an instruction header.
-  UHdrScannner : HostIoHdrScannner
+  UHdrScannner : HostIoHdrScanner
     generic map (
       ID_G               => ID_G,
       PYLD_CNTR_LENGTH_G => PYLD_CNTR_LENGTH_G
