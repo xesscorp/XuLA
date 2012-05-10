@@ -99,11 +99,13 @@ package HostIoPckg is
 
   component RamCtrlSync is
     port (
-      clk_i     : in  std_logic;        -- Clock for this domain.
-      ctrlIn_i  : in  std_logic;  -- RAM control signal from other clock domain.
-      ctrlOut_o : out std_logic;  -- RAM control signal for this clock domain.
-      doneIn_i  : in  std_logic;  -- RAM operation done signal from this clock domain.
-      doneOut_o : out std_logic  -- RAM operation done signal for the other clock domain. 
+      drck_i    : in  std_logic;        -- Clock from JTAG domain.
+      clk_i     : in  std_logic;        -- Clock from RAM domain.
+      ctrlIn_i  : in  std_logic;        -- Control signal from JTAG domain.
+      ctrlOut_o : out std_logic;        -- Control signal to RAM domain.
+      opBegun_i : in  std_logic := HI;  -- R/W operation begun signal from RAM domain.
+      doneIn_i  : in  std_logic := HI;  -- R/W operation done signal from RAM domain.
+      doneOut_o : out std_logic  -- R/W operation done signal to the JTAG domain. 
       );
   end component;
 
@@ -114,6 +116,7 @@ package HostIoPckg is
       );
     port (
       reset_i        : in  std_logic := LO;  -- Active-high reset signal.
+      active_o       : out std_logic;
       -- Interface to BscanHostIo.
       inShiftDr_i    : in  std_logic := LO;  -- true when USER JTAG instruction is active and the TAP FSM is in the Shift-DR state.
       drck_i         : in  std_logic := LO;  -- Bit clock. TDI clocked in on rising edge, TDO sampled on falling edge.
@@ -140,6 +143,7 @@ package HostIoPckg is
       );
     port (
       reset_i        : in  std_logic := LO;  -- Active-high reset signal.
+      active_o       : out std_logic;
       -- Interface to BscanHostIo.
       inShiftDr_i    : in  std_logic := LO;  -- true when USER JTAG instruction is active and the TAP FSM is in the Shift-DR state.
       drck_i         : in  std_logic := LO;  -- Bit clock. TDI clocked in on rising edge, TDO sampled on falling edge.
@@ -152,7 +156,8 @@ package HostIoPckg is
       dataFromHost_o : out std_logic_vector;        -- Data written to memory.
       rd_o           : out std_logic;   -- Read data from memory when high.
       dataToHost_i   : in  std_logic_vector;        -- Data read from memory.
-      rwDone_i       : in  std_logic := HI  -- High when memory read/write operation is done.
+      opBegun_i      : in  std_logic := HI;  -- High when memory read/write operation has begun.
+      done_i         : in  std_logic := HI  -- High when memory read/write operation is done.
       );
   end component;
 
@@ -445,6 +450,7 @@ entity HostIoToRamCore is
     );
   port (
     reset_i        : in  std_logic := LO;  -- Active-high reset signal.
+    active_o       : out std_logic;
     -- Interface to BscanHostIo.
     inShiftDr_i    : in  std_logic := LO;  -- true when USER JTAG instruction is active and the TAP FSM is in the Shift-DR state.
     drck_i         : in  std_logic := LO;  -- Bit clock. TDI clocked in on rising edge, TDO sampled on falling edge.
@@ -464,18 +470,18 @@ end entity;
 architecture arch of HostIoToRamCore is
   signal pyldCntr_s           : std_logic_vector(PYLD_CNTR_LENGTH_G-1 downto 0);
   signal active_s             : std_logic;
-  signal opcode_r             : std_logic_vector(NOP_OPCODE_C'range);
-  signal opcodeRcvd_r         : std_logic;
-  signal addrFromHost_r       : std_logic_vector(addr_o'high downto 0);
-  signal addrFromHostRcvd_r   : std_logic;
-  constant PARAM_SIZE_C       : natural := 16;
-  constant SHIFT_REG_SIZE_C   : natural := IntMax(PARAM_SIZE_C, dataFromHost_o'length);
-  signal shiftReg_r           : std_logic_vector(SHIFT_REG_SIZE_C-1 downto 0);
-  signal bitCntr_r            : natural range 0 to SHIFT_REG_SIZE_C;
-  signal wrToMemory_r         : std_logic;
-  signal rdFromMemory_r       : std_logic;
+  signal opcode_r             : std_logic_vector(NOP_OPCODE_C'range)          := NOP_OPCODE_C;
+  signal opcodeRcvd_r         : std_logic                                     := NO;
+  signal addrFromHost_r       : std_logic_vector(addr_o'high downto 0)        := (others => ZERO);
+  signal addrFromHostRcvd_r   : std_logic                                     := NO;
+  constant PARAM_SIZE_C       : natural                                       := 16;
+  constant SHIFT_REG_SIZE_C   : natural                                       := IntMax(PARAM_SIZE_C, dataFromHost_o'length);
+  signal shiftReg_r           : std_logic_vector(SHIFT_REG_SIZE_C-1 downto 0) := (others => ZERO);
+  signal bitCntr_r            : natural range 0 to SHIFT_REG_SIZE_C           := 0;
+  signal wrToMemory_r         : std_logic                                     := NO;
+  signal rdFromMemory_r       : std_logic                                     := NO;
   signal dataFromMemory_r     : std_logic_vector(dataToHost_i'high downto 0);
-  signal dataFromMemoryRcvd_r : std_logic;
+  signal dataFromMemoryRcvd_r : std_logic                                     := NO;
 begin
 
   -- Scan the bits from the host looking for an instruction header.
@@ -499,6 +505,7 @@ begin
   begin
     if rising_edge(drck_i) then
 
+      active_o <= NO;       
       -- Keep processing as long as this module is activated or writing to memory.
       if (active_s = YES or wrToMemory_r = HI) and (reset_i = LO) then
 
@@ -515,8 +522,9 @@ begin
               if bitCntr_r = 0 then  -- Load the memory parameters into the host shift register.
                 shiftReg_r(PARAM_SIZE_C-1 downto 0) <= CONV_STD_LOGIC_VECTOR(dataFromHost_o'length, PARAM_SIZE_C/2)
                                                        & CONV_STD_LOGIC_VECTOR(addr_o'length, PARAM_SIZE_C/2);
-                bitCntr_r <= shiftReg_r'length;  -- Set the number of data bits to send.
+                bitCntr_r <= PARAM_SIZE_C;  -- Set the number of data bits to send.
               else  -- Shift next bit of memory parameters to the host.
+                active_o <= YES;
                 shiftReg_r <= ZERO & shiftReg_r(shiftReg_r'high downto 1);  -- Shift register contents.
                 bitCntr_r  <= bitCntr_r - 1;  -- One more bit has been sent to the host.
               end if;
@@ -615,46 +623,74 @@ use work.SyncToClockPckg.all;
 
 entity RamCtrlSync is
   port (
-    clk_i     : in  std_logic;          -- Clock for this domain.
-    ctrlIn_i  : in  std_logic;  -- RAM control signal from other clock domain.
-    ctrlOut_o : out std_logic;  -- RAM control signal for this clock domain.
-    doneIn_i  : in  std_logic;  -- RAM operation done signal from this clock domain.
-    doneOut_o : out std_logic  -- RAM operation done signal for the other clock domain. 
+    drck_i    : in  std_logic;          -- Clock from JTAG domain.
+    clk_i     : in  std_logic;          -- Clock from RAM domain.
+    ctrlIn_i  : in  std_logic;          -- Control signal from JTAG domain.
+    ctrlOut_o : out std_logic;          -- Control signal to RAM domain.
+    opBegun_i : in  std_logic := HI;  -- R/W operation begun signal from RAM domain.
+    doneIn_i  : in  std_logic := HI;  -- R/W operation done signal from RAM domain.
+    doneOut_o : out std_logic  -- R/W operation done signal to the JTAG domain. 
     );
 end entity;
 
 architecture arch of RamCtrlSync is
-  signal ctrlIn_s : std_logic;
+  signal ctrlIn_s  : std_logic;  -- JTAG domain control signal sync'ed to RAM domain.
+  signal doneOut_r : std_logic := LO;
 begin
 
-  -- Sync the RAM control signal from the other clock domain to this clock domain.
+  -- Sync the RAM control signal from the JTAG clock domain to the RAM domain.
   UCtrlSync : SyncToClock port map (clk_i => clk_i, unsynced_i => ctrlIn_i, synced_o => ctrlIn_s);
 
-  -- Now handle the handshaking to the RAM.
+  -- Now raise-and-hold the output control signal to the RAM upon a rising edge of the input control signal.
+  -- Lower the output control signal if the input control signal goes low or if the RAM signals that the 
+  -- operation has begun or has finished.  
   process(clk_i)
-    variable prevCtrlIn_s : std_logic := LO;
+    variable prevCtrlIn_v : std_logic := HI;  -- Previous value of the input control signal.
   begin
     if rising_edge(clk_i) then
-      -- If RAM control signal from other clock doamin is inactive, then deactivate the RAM and tell
-      -- the controller in the other clock domain that the memory operation is not done.          
       if ctrlIn_s = LO then
         ctrlOut_o <= LO;
-        doneOut_o <= LO;
-      -- If the RAM control signal was inactive but is now active, then activate the RAM but
-      -- keep the done signal back to the other clock domain inactive.
-      elsif prevCtrlIn_s = LO then
+      elsif prevCtrlIn_v = LO then
         ctrlOut_o <= HI;
-        doneOut_o <= LO;
-      -- If the RAM control is active and the RAM has finished its operation, then deactivate
-      -- the RAM and tell the controller in the other clock domain that the operation is done.
-      elsif doneIn_i = HI then
+      elsif opBegun_i = HI or doneIn_i = HI then
         ctrlOut_o <= LO;
-        doneOut_o <= HI;
       end if;
-      -- Store the previous state of the control signal so we can detect the rising edge.
-      prevCtrlIn_s := CtrlIn_s;
+      prevCtrlIn_v := CtrlIn_s;
     end if;
   end process;
+
+  process(clk_i)
+  begin
+    if rising_edge(clk_i) then
+      if ctrlIn_s = LO then
+        doneOut_r <= LO;
+      elsif doneIn_i = HI then
+        doneOut_r <= HI;
+      end if;
+    end if;
+  end process;
+
+-- UDoneSync : SyncToClock port map(clk_i=>drck_i, unsynced_i=>doneOut_r, synced_o=>doneOut_o);
+  doneOut_o <= doneOut_r;
+
+  -- -- If RAM control signal from other clock doamin is inactive, then deactivate the RAM and tell
+  -- -- the controller in the other clock domain that the memory operation is not done.          
+  -- if ctrlIn_s = LO then
+  -- ctrlOut_o <= LO;
+  -- doneOut_o <= LO;
+  -- -- If the RAM control signal was inactive but is now active, then activate the RAM but
+  -- -- keep the done signal back to the other clock domain inactive.
+  -- elsif prevCtrlIn_s = LO then
+  -- ctrlOut_o <= HI;
+  -- doneOut_o <= LO;
+  -- -- If the RAM control is active and the RAM has finished its operation, then deactivate
+  -- -- the RAM and tell the controller in the other clock domain that the operation is done.
+  -- elsif doneIn_i = HI then
+  -- ctrlOut_o <= LO;
+  -- doneOut_o <= HI;
+  -- end if;
+  -- Store the previous state of the control signal so we can detect the rising edge.
+  
 end architecture;
 
 
@@ -676,6 +712,7 @@ entity HostIoToRam is
     );
   port (
     reset_i        : in  std_logic := LO;  -- Active-high reset signal.
+    active_o       : out std_logic;
     -- Interface to BscanHostIo.
     inShiftDr_i    : in  std_logic := LO;  -- true when USER JTAG instruction is active and the TAP FSM is in the Shift-DR state.
     drck_i         : in  std_logic := LO;  -- Bit clock. TDI clocked in on rising edge, TDO sampled on falling edge.
@@ -688,7 +725,8 @@ entity HostIoToRam is
     dataFromHost_o : out std_logic_vector;        -- Data written to memory.
     rd_o           : out std_logic;     -- Read data from memory when high.
     dataToHost_i   : in  std_logic_vector;        -- Data read from memory.
-    rwDone_i       : in  std_logic := HI  -- High when memory read/write operation is done.
+    opBegun_i      : in  std_logic := HI;  -- High when memory read/write operation has begun.
+    done_i         : in  std_logic := HI  -- High when memory read/write operation is done.
     );
 end entity;
 
@@ -696,10 +734,9 @@ end entity;
 architecture arch of HostIoToRam is
   signal wr_s        : std_logic;
   signal rd_s        : std_logic;
-  signal rwDone_s    : std_logic;
   signal wrDone_s    : std_logic;
   signal rdDone_s    : std_logic;
-  signal rdWrDone_s  : std_logic;
+  signal rwDone_s    : std_logic;
   signal inShiftDr_s : std_logic;
   signal drck_s      : std_logic;
   signal tdi_s       : std_logic;
@@ -736,6 +773,7 @@ begin
       )
     port map(
       reset_i        => reset_i,
+      active_o       => active_o,
       inShiftDr_i    => inShiftDr_s,
       drck_i         => drck_s,
       tdi_i          => tdi_s,
@@ -752,29 +790,32 @@ begin
   begin
     UWrRamCtrlSync : RamCtrlSync
       port map (
+        drck_i    => drck_s,
         clk_i     => clk_i,
         ctrlIn_i  => wr_s,
         ctrlOut_o => wr_o,
-        doneIn_i  => rwDone_i,
+        opBegun_i => opBegun_i,
+        doneIn_i  => done_i,
         doneOut_o => wrDone_s
         );
 
     URdRamCtrlSync : RamCtrlSync
       port map (
+        drck_i    => drck_s,
         clk_i     => clk_i,
         ctrlIn_i  => rd_s,
         ctrlOut_o => rd_o,
-        doneIn_i  => rwDone_i,
+        opBegun_i => opBegun_i,
+        doneIn_i  => done_i,
         doneOut_o => rdDone_s
         );
 
-    rdWrDone_s <= rdDone_s or wrDone_s;
-    UDoneSync : SyncToClock port map (clk_i => drck_s, unsynced_i => rdWrDone_s, synced_o => rwDone_s);
+    rwDone_s <= rdDone_s or wrDone_s;
   end generate;
 
   UUnsync : if SYNC_G = false generate
   begin
-    rwDone_s <= rwDone_i;
+    rwDone_s <= done_i;
     rd_o     <= rd_s;
     wr_o     <= wr_s;
   end generate;
