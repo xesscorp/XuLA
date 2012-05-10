@@ -1,7 +1,7 @@
 # 
 # Project automation script for ramintfc_jtag 
 # 
-# Created for ISE version 13.1
+# Created for ISE version 13.4
 # 
 # This file contains several Tcl procedures (procs) that you can use to automate
 # your project by running from xtclsh or the Project Navigator Tcl console.

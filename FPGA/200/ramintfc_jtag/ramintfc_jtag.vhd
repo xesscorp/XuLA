@@ -171,13 +171,14 @@ begin
       wr_i           => hwr,  -- host-side SDRAM write control from memory tester
       earlyOpBegun_o => earlyOpBegun,  -- early indicator that memory operation has begun
       done_o         => done,  -- SDRAM memory read/write done indicator
-      hostAddr_i     => hAddr,  -- host-side address from memory tester to SDRAM
-      hostData_i     => hDIn,  -- test data pattern from memory tester to SDRAM
-      sdramData_o    => hDOut,          -- SDRAM data output to memory tester
+      addr_i         => hAddr,  -- host-side address from memory tester to SDRAM
+      data_i         => hDIn,  -- test data pattern from memory tester to SDRAM
+      data_o         => hDOut,          -- SDRAM data output to memory tester
       sdRas_bo       => sdRas_bo,       -- SDRAM RAS
       sdCas_bo       => sdCas_bo,       -- SDRAM CAS
       sdWe_bo        => sdWe_bo,        -- SDRAM write-enable
       sdBs_o(0)      => sdBs_o,         -- SDRAM bank address
+      sdBs_o(1)      => open,
       sdAddr_o       => sdAddr_o,       -- SDRAM address
       sdData_io      => sdData_io       -- data to/from SDRAM
       );
