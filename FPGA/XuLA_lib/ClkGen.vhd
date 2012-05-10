@@ -18,7 +18,8 @@
 ----------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------
--- Module for generating a clock frequency from a master clock.
+-- Modules for generating a clock frequency from a master clock and for transferring
+-- a clock signal from the clock network to a logic input or an output pin.
 ----------------------------------------------------------------------------------
 
 
@@ -27,28 +28,33 @@ use IEEE.STD_LOGIC_1164.all;
 
 package ClkGenPckg is
 
-  component ClkGen is
-    generic (
-      BASE_FREQ_G : real                  := 12.0;  -- Input frequency in MHz.
-      CLK_MUL_G   : natural range 1 to 32 := 25;    -- Frequency multiplier.
-      CLK_DIV_G   : natural range 1 to 32 := 3      -- Frequency divider.
-      );
-    port (
-      i : in  std_logic;  -- Clock input (12 MHz by default).
-      o : out std_logic   -- Generated clock output (100 MHz by default).
-      );
-  end component;
+component ClkGen is
+  generic (
+    BASE_FREQ_G : real                  := 12.0;  -- Input frequency in MHz.
+    CLK_MUL_G   : natural range 1 to 32 := 25;    -- Frequency multiplier.
+    CLK_DIV_G   : natural range 1 to 32 := 3      -- Frequency divider.
+    );
+  port (
+    i   : in  std_logic;                -- Clock input (12 MHz by default).
+    o   : out std_logic;  -- Generated clock output (100 MHz by default).
+    o_b : out std_logic  -- Negative-phase generated clock output (inverse of 'o' output).
+    );
+end component;
+
+component ClkToLogic is
+  port (
+    clk_i  : in  std_logic;             -- Positive-phase of clock input.
+    clk_ib : in  std_logic;             -- Negative-phase of clock input.
+    clk_o  : out std_logic   -- Clock output that's suitable as a logic input.
+    );
+end component;
 
 end package;
 
 
-library IEEE;
+library IEEE, UNISIM;
 use IEEE.STD_LOGIC_1164.all;
 use work.CommonPckg.all;
-
--- Uncomment the following library declaration if instantiating
--- any Xilinx primitives in this code.
-library UNISIM;
 use UNISIM.VComponents.all;
 
 entity ClkGen is
@@ -58,8 +64,9 @@ entity ClkGen is
     CLK_DIV_G   : natural range 1 to 32 := 3      -- Frequency divider.
     );
   port (
-    i : in  std_logic;  -- Clock input (12 MHz by default).
-    o : out std_logic   -- Generated clock output (100 MHz by default).
+    i   : in  std_logic;                -- Clock input (12 MHz by default).
+    o   : out std_logic;  -- Generated clock output (100 MHz by default).
+    o_b : out std_logic  -- Negative-phase generated clock output (inverse of 'o' output).
     );
 end entity;
 
@@ -83,22 +90,41 @@ begin
       PHASE_SHIFT           => 0,  --  Amount of fixed phase shift from -255 to 255
       STARTUP_WAIT          => false)  --  Delay configuration DONE until DCM LOCK, TRUE/FALSE
     port map (
-      RST   => '0',                     -- DCM asynchronous reset input
-      CLKIN => i,                -- Clock input (from IBUFG, BUFG or DCM)
-      CLKFX => genClkP_s,                        -- Generated clock output
-      CLKFX180 => genClkN_s
+      RST      => '0',                  -- DCM asynchronous reset input
+      CLKIN    => i,               -- Clock input (from IBUFG, BUFG or DCM)
+      CLKFX    => o,               -- Positive-phase of generated clock output
+      CLKFX180 => o_b              -- Negative-phase of generated clock output.
       );
-      
-  u1: ODDR2
+end architecture;
+
+
+library IEEE, UNISIM;
+use IEEE.STD_LOGIC_1164.all;
+use work.CommonPckg.all;
+use UNISIM.VComponents.all;
+
+entity ClkToLogic is
+  port (
+    clk_i  : in  std_logic;             -- Positive-phase of clock input.
+    clk_ib : in  std_logic;             -- Negative-phase of clock input.
+    clk_o  : out std_logic   -- Clock output that's suitable as a logic input.
+    );
+end entity;
+
+architecture arch of ClkToLogic is
+begin
+  -- Use ODDR2 to transfer clock signal from FPGA's clock network to the logic fabric.
+  -- (This stops the synthesis tools from complaining about using a clock as an input
+  -- to a logic gate or when driving a pin for an external clock signal.)
+  u1 : ODDR2
     port map (
-      Q => o,
-      C0 => genClkP_s,
-      C1 => genClkN_s,
+      Q  => clk_o,
+      C0 => clk_i,
+      C1 => clk_ib,
       CE => YES,
       D0 => ONE,
       D1 => ZERO,
-      R => ZERO,
-      S => ZERO
+      R  => ZERO,
+      S  => ZERO
       );
-
 end architecture;
