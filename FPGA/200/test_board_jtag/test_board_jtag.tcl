@@ -229,6 +229,7 @@ proc add_source_files {} {
    xfile add "../../XuLA_lib/MemTest.vhd"
    xfile add "../../XuLA_lib/RandGen.vhd"
    xfile add "../../XuLA_lib/SdramCntl.vhd"
+   xfile add "../../XuLA_lib/SyncToClk.vhd"
    xfile add "../../XuLA_lib/TestBoardCore.vhd"
    xfile add "../../XuLA_lib/UserInstrJtag.vhd"
    xfile add "../../XuLA_lib/XuLA.ucf"

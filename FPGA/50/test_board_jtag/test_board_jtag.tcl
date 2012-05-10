@@ -1,7 +1,7 @@
 # 
 # Project automation script for test_board_jtag 
 # 
-# Created for ISE version 13.1
+# Created for ISE version 13.4
 # 
 # This file contains several Tcl procedures (procs) that you can use to automate
 # your project by running from xtclsh or the Project Navigator Tcl console.
@@ -229,6 +229,7 @@ proc add_source_files {} {
    xfile add "../../XuLA_lib/MemTest.vhd"
    xfile add "../../XuLA_lib/RandGen.vhd"
    xfile add "../../XuLA_lib/SdramCntl.vhd"
+   xfile add "../../XuLA_lib/SyncToClk.vhd"
    xfile add "../../XuLA_lib/TestBoardCore.vhd"
    xfile add "../../XuLA_lib/UserInstrJtag.vhd"
    xfile add "../../XuLA_lib/XuLA.ucf"
