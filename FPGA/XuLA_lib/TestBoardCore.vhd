@@ -14,7 +14,7 @@
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
 --
--- ©1997-2010 - X Engineering Software Systems Corp. (www.xess.com)
+-- ©1997-2012 - X Engineering Software Systems Corp. (www.xess.com)
 ----------------------------------------------------------------------------------
 
 
@@ -48,14 +48,18 @@ package TestBoardCorePckg is
       rst_i      : in    std_logic := NO;
       clk_i      : in    std_logic;  -- main clock input from external clock source
       do_again_i : in    std_logic := NO;
-      sdRas_bo   : out   std_logic;     -- SDRAM RAS
-      sdCas_bo   : out   std_logic;     -- SDRAM CAS
-      sdWe_bo    : out   std_logic;     -- SDRAM write-enable
-      sdBs_o     : out   std_logic_vector(0 downto 0);  -- SDRAM bank-address
-      sdAddr_o   : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus
-      sdData_io  : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- data from SDRAM
       progress_o : out   std_logic_vector(1 downto 0);  -- test progress_o indicator
-      err_o      : out   std_logic   -- true if an error was found during test
+      err_o      : out   std_logic;  -- true if an error was found during test
+      sdCke_o    : out   std_logic;     -- Clock-enable to SDRAM.
+      sdCe_bo    : out   std_logic;     -- Chip-select to SDRAM.
+      sdRas_bo   : out   std_logic;     -- SDRAM row address strobe.
+      sdCas_bo   : out   std_logic;     -- SDRAM column address strobe.
+      sdWe_bo    : out   std_logic;     -- SDRAM write enable.
+      sdBs_o     : out   std_logic_vector(1 downto 0);  -- SDRAM bank address.
+      sdAddr_o   : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM row/column address.
+      sdData_io  : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- Data to/from SDRAM.
+      sdDqmh_o   : out   std_logic;  -- Enable upper-byte of SDRAM databus if true.
+      sdDqml_o   : out   std_logic  -- Enable lower-byte of SDRAM databus if true.
       );
   end component;
 
@@ -90,14 +94,18 @@ entity TestBoardCore is
     rst_i      : in    std_logic := NO;
     clk_i      : in    std_logic;  -- main clock input from external clock source
     do_again_i : in    std_logic := NO;
-    sdRas_bo   : out   std_logic;       -- SDRAM RAS
-    sdCas_bo   : out   std_logic;       -- SDRAM CAS
-    sdWe_bo    : out   std_logic;       -- SDRAM write-enable
-    sdBs_o     : out   std_logic_vector(0 downto 0);  -- SDRAM bank-address
-    sdAddr_o   : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus
-    sdData_io  : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- data from SDRAM
     progress_o : out   std_logic_vector(1 downto 0);  -- test progress_o indicator
-    err_o      : out   std_logic   -- true if an error was found during test
+    err_o      : out   std_logic;  -- true if an error was found during test
+    sdCke_o    : out   std_logic;       -- Clock-enable to SDRAM.
+    sdCe_bo    : out   std_logic;       -- Chip-select to SDRAM.
+    sdRas_bo   : out   std_logic;       -- SDRAM row address strobe.
+    sdCas_bo   : out   std_logic;       -- SDRAM column address strobe.
+    sdWe_bo    : out   std_logic;       -- SDRAM write enable.
+    sdBs_o     : out   std_logic_vector(1 downto 0);  -- SDRAM bank address.
+    sdAddr_o   : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM row/column address.
+    sdData_io  : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- Data to/from SDRAM.
+    sdDqmh_o   : out   std_logic;  -- Enable upper-byte of SDRAM databus if true.
+    sdDqml_o   : out   std_logic  -- Enable lower-byte of SDRAM databus if true.
     );
 end entity;
 
@@ -203,16 +211,20 @@ begin
       rdPending_o    => rdPending_s,  -- read operation to SDRAM is in progress_o
       done_o         => done_s,  -- SDRAM memory read/write done indicator
       rdDone_o       => rdDone_s,  -- indicates SDRAM memory read operation is done
-      hostAddr_i     => hAddr_s,  -- host-side address from memory tester to SDRAM
-      hostData_i     => hDIn_s,  -- test data pattern from memory tester to SDRAM
-      sdramData_o    => hDOut_s,        -- SDRAM data output to memory tester
+      addr_i         => hAddr_s,  -- host-side address from memory tester to SDRAM
+      data_i         => hDIn_s,  -- test data pattern from memory tester to SDRAM
+      data_o         => hDOut_s,        -- SDRAM data output to memory tester
       status_o       => open,  -- SDRAM controller state (for diagnostics)
+      sdCke_o        => sdCke_o,
+      sdCe_bo        => sdCe_bo,
       sdRas_bo       => sdRas_bo,       -- SDRAM RAS
       sdCas_bo       => sdCas_bo,       -- SDRAM CAS
       sdWe_bo        => sdWe_bo,        -- SDRAM write-enable
       sdBs_o         => sdBs_o,         -- SDRAM bank address
       sdAddr_o       => sdAddr_o,       -- SDRAM address
-      sdData_io      => sdData_io       -- data to/from SDRAM
+      sdData_io      => sdData_io,      -- data to/from SDRAM
+      sdDqmh_o       => sdDqmh_o,  -- upper-byte enable for SDRAM data bus.
+      sdDqml_o       => sdDqml_o  -- lower-byte enable for SDRAM data bus.
       );
 
 end architecture;
