@@ -1,4 +1,4 @@
-----------------------------------------------------------------------------------
+--*********************************************************************
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License
 -- as published by the Free Software Foundation; either version 2
@@ -14,12 +14,12 @@
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
 --
--- ©1997-2011 - X Engineering Software Systems Corp. (www.xess.com)
-----------------------------------------------------------------------------------
+-- ©2001-2012 - X Engineering Software Systems Corp. (www.xess.com)
+--*********************************************************************
 
-----------------------------------------------------------------------------------
+--*********************************************************************
 -- SDRAM controller and dual-port interface.
-----------------------------------------------------------------------------------
+--*********************************************************************
 
 
 
@@ -31,42 +31,54 @@ package SdramCntlPckg is
 
   component SdramCntl is
     generic(
-      FREQ_G                 : real    := 50.0;  -- Operating frequency in MHz.
+      FREQ_G                 : real    := 100.0;  -- Operating frequency in MHz.
       IN_PHASE_G             : boolean := true;  -- SDRAM and controller work on same or opposite clock edge.
-      PIPE_EN_G              : boolean := true;  -- If true, enable pipelined read operations.
+      PIPE_EN_G              : boolean := false;  -- If true, enable pipelined read operations.
       MAX_NOP_G              : natural := 10000;  -- Number of NOPs before entering self-refresh.
       ENABLE_REFRESH_G       : boolean := true;  -- If true, row refreshes are automatically inserted.
       MULTIPLE_ACTIVE_ROWS_G : boolean := false;  -- If true, allow an active row in each bank.
       DATA_WIDTH_G           : natural := 16;   -- Host & SDRAM data width.
+      -- Parameters for Winbond W9812G6JH-75 (all times are in nanoseconds).
       NROWS_G                : natural := 4096;  -- Number of rows in SDRAM array.
       NCOLS_G                : natural := 512;  -- Number of columns in SDRAM array.
       HADDR_WIDTH_G          : natural := 23;   -- Host-side address width.
-      SADDR_WIDTH_G          : natural := 12    -- SDRAM-side address width.
+      SADDR_WIDTH_G          : natural := 12;   -- SDRAM-side address width.
+      T_INIT_G               : real    := 200_000.0;  -- min initialization interval (ns).
+      T_RAS_G                : real    := 45.0;  -- min interval between active to precharge commands (ns).
+      T_RCD_G                : real    := 20.0;  -- min interval between active and R/W commands (ns).
+      T_REF_G                : real    := 64_000_000.0;  -- maximum refresh interval (ns).
+      T_RFC_G                : real    := 65.0;  -- duration of refresh operation (ns).
+      T_RP_G                 : real    := 20.0;  -- min precharge command duration (ns).
+      T_XSR_G                : real    := 75.0  -- exit self-refresh time (ns).
       );
     port(
-      -- host side.
+      -- Host side.
       clk_i          : in  std_logic;   -- Master clock.
-      lock_i         : in  std_logic                                 := YES;  -- True if clock is stable.
-      rst_i          : in  std_logic                                 := NO;  -- Reset.
-      rd_i           : in  std_logic                                 := NO;  -- Initiate read operation.
-      wr_i           : in  std_logic                                 := NO;  -- Initiate write operation.
+      lock_i         : in  std_logic                                  := YES;  -- True if clock is stable.
+      rst_i          : in  std_logic                                  := NO;  -- Reset.
+      rd_i           : in  std_logic                                  := NO;  -- Initiate read operation.
+      wr_i           : in  std_logic                                  := NO;  -- Initiate write operation.
       earlyOpBegun_o : out std_logic;  -- Read/write/self-refresh op has begun (async).
       opBegun_o      : out std_logic;  -- Read/write/self-refresh op has begun (clocked).
       rdPending_o    : out std_logic;  -- True if read operation(s) are still in the pipeline.
       done_o         : out std_logic;   -- Read or write operation is done_o.
       rdDone_o       : out std_logic;  -- Read operation is done_o and data is available.
-      hostAddr_i     : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0);  -- Address from host to SDRAM.
-      hostData_i     : in  std_logic_vector(DATA_WIDTH_G-1 downto 0) := (others => ZERO);  -- Data from host to SDRAM.
-      sdramData_o    : out std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- Data from SDRAM to host.
+      addr_i         : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0) := (others => ZERO);  -- Address from host to SDRAM.
+      data_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);  -- Data from host to SDRAM.
+      data_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- Data from SDRAM to host.
       status_o       : out std_logic_vector(3 downto 0);  -- Diagnostic status of the FSM         .
 
       -- SDRAM side.
+      sdCke_o   : out   std_logic;      -- Clock-enable to SDRAM.
+      sdCe_bo   : out   std_logic;      -- Chip-select to SDRAM.
       sdRas_bo  : out   std_logic;      -- SDRAM row address strobe.
       sdCas_bo  : out   std_logic;      -- SDRAM column address strobe.
       sdWe_bo   : out   std_logic;      -- SDRAM write enable.
-      sdBs_o    : out   std_logic_vector(0 downto 0);  -- SDRAM bank address.
+      sdBs_o    : out   std_logic_vector(1 downto 0);  -- SDRAM bank address.
       sdAddr_o  : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM row/column address.
-      sdData_io : inout std_logic_vector(DATA_WIDTH_G-1 downto 0)  -- Data to/from SDRAM.
+      sdData_io : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- Data to/from SDRAM.
+      sdDqmh_o  : out   std_logic;  -- Enable upper-byte of SDRAM databus if true.
+      sdDqml_o  : out   std_logic  -- Enable lower-byte of SDRAM databus if true.
       );
   end component;
 
@@ -80,35 +92,35 @@ package SdramCntlPckg is
     port(
       clk_i : in std_logic;             -- master clock.
 
-      -- host-side port 0.
-      rst0_i          : in  std_logic                                 := NO;  -- reset.
-      rd0_i           : in  std_logic                                 := NO;  -- initiate read operation.
-      wr0_i           : in  std_logic                                 := NO;  -- initiate write operation.
+      -- Host-side port 0.
+      rst0_i          : in  std_logic                                  := NO;  -- reset.
+      rd0_i           : in  std_logic                                  := NO;  -- initiate read operation.
+      wr0_i           : in  std_logic                                  := NO;  -- initiate write operation.
       earlyOpBegun0_o : out std_logic;  -- read/write op has begun (async).
-      opBegun0_o      : out std_logic;  -- read/write op has begun (clocked).
+      opBegun0_o      : out std_logic                                  := NO;  -- read/write op has begun (clocked).
       rdPending0_o    : out std_logic;  -- true if read operation(s) are still in the pipeline.
       done0_o         : out std_logic;  -- read or write operation is done_i.
       rdDone0_o       : out std_logic;  -- read operation is done_i and data is available.
-      hAddr0_i        : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0);  -- address from host to SDRAM.
-      hostData0_i     : in  std_logic_vector(DATA_WIDTH_G-1 downto 0) := (others => ZERO);  -- data from host to SDRAM.
-      sdramData0_o    : out std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- data from SDRAM to host.
-      status0_o       : out std_logic_vector(3 downto 0);  -- diagnostic status of the SDRAM controller FSM         .
+      addr0_i         : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0) := (others => ZERO);  -- address from host to SDRAM.
+      data0_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);  -- data from host to SDRAM.
+      data0_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);  -- data from SDRAM to host.
+      status0_o       : out std_logic_vector(3 downto 0);  -- diagnostic status of the SDRAM controller FSM.
 
-      -- host-side port 1.
-      rst1_i          : in  std_logic                                 := NO;
-      rd1_i           : in  std_logic                                 := NO;
-      wr1_i           : in  std_logic                                 := NO;
+      -- Host-side port 1.
+      rst1_i          : in  std_logic                                  := NO;
+      rd1_i           : in  std_logic                                  := NO;
+      wr1_i           : in  std_logic                                  := NO;
       earlyOpBegun1_o : out std_logic;
-      opBegun1_o      : out std_logic;
+      opBegun1_o      : out std_logic                                  := NO;
       rdPending1_o    : out std_logic;
       done1_o         : out std_logic;
       rdDone1_o       : out std_logic;
-      hAddr1_i        : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0);
-      hostData1_i     : in  std_logic_vector(DATA_WIDTH_G-1 downto 0) := (others => ZERO);
-      sdramData1_o    : out std_logic_vector(DATA_WIDTH_G-1 downto 0);
+      addr1_i         : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0) := (others => ZERO);
+      data1_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);
+      data1_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);
       status1_o       : out std_logic_vector(3 downto 0);
 
-      -- SDRAM controller port.
+      -- SDRAM controller host-side port.
       rst_o          : out std_logic;
       rd_o           : out std_logic;
       wr_o           : out std_logic;
@@ -117,9 +129,9 @@ package SdramCntlPckg is
       rdPending_i    : in  std_logic;
       done_i         : in  std_logic;
       rdDone_i       : in  std_logic;
-      hostAddr_o     : out std_logic_vector(HADDR_WIDTH_G-1 downto 0);
-      hostData_o     : out std_logic_vector(DATA_WIDTH_G-1 downto 0);
-      sdramData_i    : in  std_logic_vector(DATA_WIDTH_G-1 downto 0);
+      addr_o         : out std_logic_vector(HADDR_WIDTH_G-1 downto 0);
+      data_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0);
+      data_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0);
       status_i       : in  std_logic_vector(3 downto 0)
       );
   end component;
@@ -128,9 +140,9 @@ end package;
 
 
 
---------------------------------------------------------------------
+--*********************************************************************
 -- SDRAM controller.
---------------------------------------------------------------------
+--*********************************************************************
 
 library IEEE, UNISIM;
 use IEEE.std_logic_1164.all;
@@ -141,42 +153,54 @@ use WORK.CommonPckg.all;
 
 entity SdramCntl is
   generic(
-    FREQ_G                 : real    := 50.0;  -- Operating frequency in MHz.
+    FREQ_G                 : real    := 100.0;  -- Operating frequency in MHz.
     IN_PHASE_G             : boolean := true;  -- SDRAM and controller work on same or opposite clock edge.
-    PIPE_EN_G              : boolean := true;  -- If true, enable pipelined read operations.
+    PIPE_EN_G              : boolean := false;  -- If true, enable pipelined read operations.
     MAX_NOP_G              : natural := 10000;  -- Number of NOPs before entering self-refresh.
     ENABLE_REFRESH_G       : boolean := true;  -- If true, row refreshes are automatically inserted.
     MULTIPLE_ACTIVE_ROWS_G : boolean := false;  -- If true, allow an active row in each bank.
     DATA_WIDTH_G           : natural := 16;   -- Host & SDRAM data width.
+    -- Parameters for Winbond W9812G6JH-75 (all times are in nanoseconds).
     NROWS_G                : natural := 4096;  -- Number of rows in SDRAM array.
     NCOLS_G                : natural := 512;  -- Number of columns in SDRAM array.
     HADDR_WIDTH_G          : natural := 23;   -- Host-side address width.
-    SADDR_WIDTH_G          : natural := 12    -- SDRAM-side address width.
+    SADDR_WIDTH_G          : natural := 12;   -- SDRAM-side address width.
+    T_INIT_G               : real    := 200_000.0;  -- min initialization interval (ns).
+    T_RAS_G                : real    := 45.0;  -- min interval between active to precharge commands (ns).
+    T_RCD_G                : real    := 20.0;  -- min interval between active and R/W commands (ns).
+    T_REF_G                : real    := 64_000_000.0;  -- maximum refresh interval (ns).
+    T_RFC_G                : real    := 65.0;  -- duration of refresh operation (ns).
+    T_RP_G                 : real    := 20.0;  -- min precharge command duration (ns).
+    T_XSR_G                : real    := 75.0  -- exit self-refresh time (ns).
     );
   port(
-    -- host side.
+    -- Host side.
     clk_i          : in  std_logic;     -- Master clock.
-    lock_i         : in  std_logic                                 := YES;  -- True if clock is stable.
-    rst_i          : in  std_logic                                 := NO;  -- Reset.
-    rd_i           : in  std_logic                                 := NO;  -- Initiate read operation.
-    wr_i           : in  std_logic                                 := NO;  -- Initiate write operation.
+    lock_i         : in  std_logic                                  := YES;  -- True if clock is stable.
+    rst_i          : in  std_logic                                  := NO;  -- Reset.
+    rd_i           : in  std_logic                                  := NO;  -- Initiate read operation.
+    wr_i           : in  std_logic                                  := NO;  -- Initiate write operation.
     earlyOpBegun_o : out std_logic;  -- Read/write/self-refresh op has begun (async).
     opBegun_o      : out std_logic;  -- Read/write/self-refresh op has begun (clocked).
     rdPending_o    : out std_logic;  -- True if read operation(s) are still in the pipeline.
     done_o         : out std_logic;     -- Read or write operation is done_o.
     rdDone_o       : out std_logic;  -- Read operation is done_o and data is available.
-    hostAddr_i     : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0);  -- Address from host to SDRAM.
-    hostData_i     : in  std_logic_vector(DATA_WIDTH_G-1 downto 0) := (others => ZERO);  -- Data from host to SDRAM.
-    sdramData_o    : out std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- Data from SDRAM to host.
+    addr_i         : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0) := (others => ZERO);  -- Address from host to SDRAM.
+    data_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);  -- Data from host to SDRAM.
+    data_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- Data from SDRAM to host.
     status_o       : out std_logic_vector(3 downto 0);  -- Diagnostic status of the FSM         .
 
     -- SDRAM side.
+    sdCke_o   : out   std_logic;        -- Clock-enable to SDRAM.
+    sdCe_bo   : out   std_logic;        -- Chip-select to SDRAM.
     sdRas_bo  : out   std_logic;        -- SDRAM row address strobe.
     sdCas_bo  : out   std_logic;        -- SDRAM column address strobe.
     sdWe_bo   : out   std_logic;        -- SDRAM write enable.
-    sdBs_o    : out   std_logic_vector(0 downto 0);  -- SDRAM bank address.
+    sdBs_o    : out   std_logic_vector(1 downto 0);  -- SDRAM bank address.
     sdAddr_o  : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM row/column address.
-    sdData_io : inout std_logic_vector(DATA_WIDTH_G-1 downto 0)  -- Data to/from SDRAM.
+    sdData_io : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- Data to/from SDRAM.
+    sdDqmh_o  : out   std_logic;  -- Enable upper-byte of SDRAM databus if true.
+    sdDqml_o  : out   std_logic  -- Enable lower-byte of SDRAM databus if true.
     );
 end entity;
 
@@ -190,36 +214,27 @@ architecture arch of SdramCntl is
   constant READ_C   : std_logic := '1';  -- read operation.
   constant WRITE_C  : std_logic := '1';  -- write operation.
 
-  -- SDRAM timing parameters for Winbond W9812G6JH-75 (all times are in nanoseconds).
-  constant T_INIT_C : real := 200_000.0;     -- min initialization interval .
-  constant T_RAS_C  : real := 45.0;  -- min interval between active to precharge commands .
-  constant T_RCD_C  : real := 20.0;  -- min interval between active and R/W commands .
-  constant T_REF_C  : real := 64_000_000.0;  -- maximum refresh interval .
-  constant T_RFC_C  : real := 65.0;     -- duration of refresh operation .
-  constant T_RP_C   : real := 20.0;     -- min precharge command duration .
-  constant T_XSR_C  : real := 75.0;     -- exit self-refresh time .
-
   -- SDRAM timing parameters converted into clock cycles (based on FREQ_G).
   constant FREQ_GHZ_C    : real    := FREQ_G/1000.0;  -- GHz = 1/ns.
-  constant INIT_CYCLES_C : natural := integer(ceil(T_INIT_C*FREQ_GHZ_C));  -- SDRAM power-on initialization interval.
-  constant RAS_CYCLES_C  : natural := integer(ceil(T_RAS_C*FREQ_GHZ_C));  -- active-to-precharge interval.
-  constant RCD_CYCLES_C  : natural := integer(ceil(T_RCD_C*FREQ_GHZ_C));  -- active-to-R/W interval.
-  constant REF_CYCLES_C  : natural := integer(ceil(T_REF_C*FREQ_GHZ_C/real(NROWS_G)));  -- interval between row refreshes.
-  constant RFC_CYCLES_C  : natural := integer(ceil(T_RFC_C*FREQ_GHZ_C));  -- refresh operation interval.
-  constant RP_CYCLES_C   : natural := integer(ceil(T_RP_C*FREQ_GHZ_C));  -- precharge operation interval.
+  constant INIT_CYCLES_C : natural := integer(ceil(T_INIT_G*FREQ_GHZ_C));  -- SDRAM power-on initialization interval.
+  constant RAS_CYCLES_C  : natural := integer(ceil(T_RAS_G*FREQ_GHZ_C));  -- active-to-precharge interval.
+  constant RCD_CYCLES_C  : natural := integer(ceil(T_RCD_G*FREQ_GHZ_C));  -- active-to-R/W interval.
+  constant REF_CYCLES_C  : natural := integer(ceil(T_REF_G*FREQ_GHZ_C/real(NROWS_G)));  -- interval between row refreshes.
+  constant RFC_CYCLES_C  : natural := integer(ceil(T_RFC_G*FREQ_GHZ_C));  -- refresh operation interval.
+  constant RP_CYCLES_C   : natural := integer(ceil(T_RP_G*FREQ_GHZ_C));  -- precharge operation interval.
   constant WR_CYCLES_C   : natural := 2;  -- write recovery time.
-  constant XSR_CYCLES_C  : natural := integer(ceil(T_XSR_C*FREQ_GHZ_C));  -- exit self-refresh time.
+  constant XSR_CYCLES_C  : natural := integer(ceil(T_XSR_G*FREQ_GHZ_C));  -- exit self-refresh time.
   constant MODE_CYCLES_C : natural := 2;  -- mode register setup time.
   constant CAS_CYCLES_C  : natural := 3;  -- CAS latency.
   constant RFSH_OPS_C    : natural := 8;  -- number of refresh operations needed to init SDRAM.
 
   -- timer registers that count down times for various SDRAM operations.
-  signal timer_r, timer_x       : natural range 0 to INIT_CYCLES_C;  -- current SDRAM op time.
-  signal rasTimer_r, rasTimer_x : natural range 0 to RAS_CYCLES_C;  -- active-to-precharge time.
-  signal wrTimer_r, wrTimer_x   : natural range 0 to WR_CYCLES_C;  -- write-to-precharge time.
-  signal refTimer_r, refTimer_x : natural range 0 to REF_CYCLES_C;  -- time between row refreshes.
-  signal rfshCntr_r, rfshCntr_x : natural range 0 to NROWS_G;  -- counts refreshes that are neede.
-  signal nopCntr_r, nopCntr_x   : natural range 0 to MAX_NOP_G;  -- counts consecutive NOP_C operations.
+  signal timer_r, timer_x       : natural range 0 to INIT_CYCLES_C := 0;  -- current SDRAM op time.
+  signal rasTimer_r, rasTimer_x : natural range 0 to RAS_CYCLES_C  := 0;  -- active-to-precharge time.
+  signal wrTimer_r, wrTimer_x   : natural range 0 to WR_CYCLES_C   := 0;  -- write-to-precharge time.
+  signal refTimer_r, refTimer_x : natural range 0 to REF_CYCLES_C  := REF_CYCLES_C;  -- time between row refreshes.
+  signal rfshCntr_r, rfshCntr_x : natural range 0 to NROWS_G       := 0;  -- counts refreshes that are neede.
+  signal nopCntr_r, nopCntr_x   : natural range 0 to MAX_NOP_G     := 0;  -- counts consecutive NOP_C operations.
 
   signal doSelfRfsh_s : std_logic;  -- active when the NOP counter hits zero and self-refresh can start.
 
@@ -232,9 +247,9 @@ architecture arch of SdramCntl is
     RW,                                 -- read/write/refresh the SDRAM.
     ACTIVATE,  -- open a row of the SDRAM for reading/writing.
     REFRESHROW,                         -- refresh a row of the SDRAM.
-    SELFREFRESH  -- keep SDRAM in self-refresh mode with CKE low.
+    SELFREFRESH   -- keep SDRAM in self-refresh mode with CKE low.
     );
-  signal state_r, state_x : CntlStateType;  -- state register and next state.
+  signal state_r, state_x : CntlStateType := INITWAIT;  -- state register and next state.
 
   -- commands that are sent to the SDRAM to make it perform certain operations.
   -- commands use these SDRAM input pins (ce_bo,ras_bo,cas_bo,we_bo,dqmh_o,dqml_o).
@@ -260,10 +275,10 @@ architecture arch of SdramCntl is
   signal col_s       : std_logic_vector(sdAddr_o'range);  -- column address within row.
 
   -- registers that store the currently active row in each bank of the SDRAM.
-  constant NUM_ACTIVE_ROWS_C        : integer := IntSelect(MULTIPLE_ACTIVE_ROWS_G = false, 1, 2**sdBs_o'length);
+  constant NUM_ACTIVE_ROWS_C        : integer                                    := IntSelect(MULTIPLE_ACTIVE_ROWS_G = false, 1, 2**sdBs_o'length);
   type ActiveRowType is array(0 to NUM_ACTIVE_ROWS_C-1) of std_logic_vector(row_s'range);
   signal activeRow_r, activeRow_x   : ActiveRowType;
-  signal activeFlag_r, activeFlag_x : std_logic_vector(0 to NUM_ACTIVE_ROWS_C-1);  -- indicates that some row in a bank is active.
+  signal activeFlag_r, activeFlag_x : std_logic_vector(0 to NUM_ACTIVE_ROWS_C-1) := (others => NO);  -- indicates that some row in a bank is active.
   signal bankIndex_s                : natural range 0 to NUM_ACTIVE_ROWS_C-1;  -- bank address bits.
   signal activeBank_r, activeBank_x : std_logic_vector(sdBs_o'range);  -- indicates the bank with the active row.
   signal doActivate_s               : std_logic;  -- indicates when a new row in a bank needs to be activated.
@@ -281,69 +296,71 @@ architecture arch of SdramCntl is
   signal activateInProgress_s : std_logic;  -- row activation is in progress.
 
   -- these registers track the progress of read and write operations.
-  signal rdPipeline_r, rdPipeline_x : std_logic_vector(CAS_CYCLES_C+1 downto 0);  -- pipeline of read ops in progress.
-  signal wrPipeline_r, wrPipeline_x : std_logic_vector(0 downto 0);  -- pipeline of write ops (only need 1 cycle).
+  signal rdPipeline_r, rdPipeline_x : std_logic_vector(CAS_CYCLES_C+1 downto 0) := (others => '0');  -- pipeline of read ops in progress.
+  signal wrPipeline_r, wrPipeline_x : std_logic_vector(0 downto 0)              := (others => '0');  -- pipeline of write ops (only need 1 cycle).
 
   -- registered outputs to host.
-  signal opBegun_r, opBegun_x                     : std_logic;  -- true when SDRAM read or write operation is started.
-  signal sdramData_r, sdramData_x                 : std_logic_vector(sdramData_o'range);  -- holds data read from SDRAM and sent to the host.
-  signal sdramDataOppPhase_r, sdramDataOppPhase_x : std_logic_vector(sdramData_o'range);  -- holds data read from SDRAM on opposite clock edge.
+  signal opBegun_r, opBegun_x                     : std_logic                      := NO;  -- true when SDRAM read or write operation is started.
+  signal sdramData_r, sdramData_x                 : std_logic_vector(data_o'range) := (others => '0');  -- holds data read from SDRAM and sent to the host.
+  signal sdramDataOppPhase_r, sdramDataOppPhase_x : std_logic_vector(data_o'range);  -- holds data read from SDRAM on opposite clock edge.
 
   -- registered outputs to SDRAM.
-  signal cmd_r, cmd_x           : SdramCmdType;  -- SDRAM command bits.
-  signal ba_r, ba_x             : std_logic_vector(sdBs_o'range);  -- SDRAM bank address bits.
-  signal sAddr_r, sAddr_x       : std_logic_vector(sdAddr_o'range);  -- SDRAM row/column address.
-  signal sData_r, sData_x       : std_logic_vector(sdData_io'range);  -- SDRAM out databus.
-  signal sDataDir_r, sDataDir_x : std_logic;  -- SDRAM databus direction control bit.
+  signal cke_r, cke_x           : std_logic                         := NO;  -- Clock-enable bit.
+  signal cmd_r, cmd_x           : SdramCmdType                      := NOP_CMD_C;  -- SDRAM command bits.
+  signal ba_r, ba_x             : std_logic_vector(sdBs_o'range)    := (others => '0');  -- SDRAM bank address bits.
+  signal sAddr_r, sAddr_x       : std_logic_vector(sdAddr_o'range)  := (others => '0');  -- SDRAM row/column address.
+  signal sData_r, sData_x       : std_logic_vector(sdData_io'range) := (others => '0');  -- SDRAM out databus.
+  signal sDataDir_r, sDataDir_x : std_logic                         := INPUT_C;  -- SDRAM databus direction control bit.
 
 begin
 
-  -----------------------------------------------------------
+  --*********************************************************************
   -- attach some internal signals to the I/O ports 
-  -----------------------------------------------------------
+  --*********************************************************************
 
   -- attach registered SDRAM control signals to SDRAM input pins
-  (sdRas_bo, sdCas_bo, sdWe_bo) <= cmd_r(4 downto 2);  -- SDRAM operation control bits
-  sdBs_o                        <= ba_r;               -- SDRAM bank address
-  sdAddr_o                      <= sAddr_r;            -- SDRAM address
-  sdData_io                     <= sData_r when sDataDir_r = OUTPUT_C else (others => 'Z');  -- SDRAM output data bus
-
+  (sdCe_bo, sdRas_bo, sdCas_bo, sdWe_bo, sdDqmh_o, sdDqml_o) <= cmd_r;  -- SDRAM operation control bits
+  sdCke_o                                                    <= cke_r;  -- SDRAM clock enable
+  sdBs_o                                                     <= ba_r;  -- SDRAM bank address
+  sdAddr_o                                                   <= sAddr_r;  -- SDRAM address
+  sdData_io                                                  <= sData_r when sDataDir_r = OUTPUT_C else (others => 'Z');  -- SDRAM output data bus
   -- attach some port signals
-  sdramData_o <= sdramData_r;           -- data back to host
-  opBegun_o   <= opBegun_r;    -- true if requested operation has begun
+  data_o                                                     <= sdramData_r;  -- data back to host
+  opBegun_o                                                  <= opBegun_r;  -- true if requested operation has begun
 
 
-  -----------------------------------------------------------
+  --*********************************************************************
   -- compute the next state and outputs 
-  -----------------------------------------------------------
+  --*********************************************************************
 
-  combinatorial : process(rd_i, wr_i, hostAddr_i, hostData_i, sdramData_r, sdData_io, state_r, opBegun_x,
+  combinatorial : process(rd_i, wr_i, addr_i, data_i, sdramData_r, sdData_io, state_r, opBegun_x,
                           activeFlag_r, activeRow_r, activeBank_r, rdPipeline_r, wrPipeline_r,
                           sdramDataOppPhase_r, nopCntr_r, lock_i, rfshCntr_r, timer_r, rasTimer_r,
-                          wrTimer_r, refTimer_r, cmd_r, col_s, ba_r)
+                          wrTimer_r, refTimer_r, cmd_r, col_s, ba_r, cke_r)
   begin
 
-    -----------------------------------------------------------
+    --*********************************************************************
     -- setup default values for signals 
-    -----------------------------------------------------------
+    --*********************************************************************
 
     opBegun_x      <= NO;               -- no operations have begun
     earlyOpBegun_o <= opBegun_x;
+    cke_x          <= YES;              -- enable SDRAM clock
     cmd_x          <= NOP_CMD_C;        -- set SDRAM command to no-operation
     sDataDir_x     <= INPUT_C;          -- accept data from the SDRAM
-    sData_x        <= hostData_i(sData_x'range);  -- output data from host to SDRAM
+    sData_x        <= data_i(sData_x'range);  -- output data from host to SDRAM
     state_x        <= state_r;          -- reload these registers and flags
     activeFlag_x   <= activeFlag_r;  --              with their existing values
     activeRow_x    <= activeRow_r;
     activeBank_x   <= activeBank_r;
     rfshCntr_x     <= rfshCntr_r;
 
-    -----------------------------------------------------------
+    --*********************************************************************
     -- setup default value for the SDRAM address 
-    -----------------------------------------------------------
+    --*********************************************************************
 
     -- extract bank field from host address
-    ba_x <= hostAddr_i(sdBs_o'length + ROW_LEN_C + COL_LEN_C - 1 downto ROW_LEN_C + COL_LEN_C);
+    ba_x <= addr_i(sdBs_o'length + ROW_LEN_C + COL_LEN_C - 1 downto ROW_LEN_C + COL_LEN_C);
     if MULTIPLE_ACTIVE_ROWS_G = true then
       bank_s      <= (others => '0');
       bankIndex_s <= CONV_INTEGER(ba_x);
@@ -352,21 +369,21 @@ begin
       bankIndex_s <= 0;
     end if;
     -- extract row, column fields from host address
-    row_s                       <= hostAddr_i(ROW_LEN_C + COL_LEN_C - 1 downto COL_LEN_C);
+    row_s                       <= addr_i(ROW_LEN_C + COL_LEN_C - 1 downto COL_LEN_C);
     -- extend column (if needed) until it is as large as the (SDRAM address bus - 1)
     col_s                       <= (others => '0');  -- set it to all zeroes
-    col_s(COL_LEN_C-1 downto 0) <= hostAddr_i(COL_LEN_C-1 downto 0);
+    col_s(COL_LEN_C-1 downto 0) <= addr_i(COL_LEN_C-1 downto 0);
     -- by default, set SDRAM address to the column address with interspersed
     -- command bit set to disable auto-precharge
     sAddr_x                     <= col_s(col_s'high-1 downto CMDBIT_POS_C) & AUTO_PCHG_OFF_C
                                    & col_s(CMDBIT_POS_C-1 downto 0);
 
-    -----------------------------------------------------------
+    --*********************************************************************
     -- manage the read and write operation pipelines
-    -----------------------------------------------------------
+    --*********************************************************************
 
     -- determine if read operations are in progress by the presence of
-    -- READ_C flags in the read pipeline 
+    -- READ flags in the read pipeline 
     if rdPipeline_r(rdPipeline_r'high downto 1) /= 0 then
       rdInProgress_s <= YES;
     else
@@ -379,15 +396,15 @@ begin
     wrPipeline_x(0) <= NOP_C;
 
     -- transfer data from SDRAM to the host data register if a read flag has exited the pipeline
-    -- (the transfer occurs 1 cycle before we tell the host the read operation is done_o)
+    -- (the transfer occurs 1 cycle before we tell the host the read operation is done)
     if rdPipeline_r(1) = READ_C then
-      sdramDataOppPhase_x <= sdData_io(sdramData_o'range);  -- gets value on the SDRAM databus on the opposite phase
+      sdramDataOppPhase_x <= sdData_io(data_o'range);  -- gets value on the SDRAM databus on the opposite phase
       if IN_PHASE_G then
         -- get the SDRAM data for the host directly from the SDRAM if the controller and SDRAM are in-phase
-        sdramData_x <= sdData_io(sdramData_o'range);
+        sdramData_x <= sdData_io(data_o'range);
       else
         -- otherwise get the SDRAM data that was gathered on the previous opposite clock edge
-        sdramData_x <= sdramDataOppPhase_r(sdramData_o'range);
+        sdramData_x <= sdramDataOppPhase_r(data_o'range);
       end if;
     else
       -- retain contents of host data registers if no data from the SDRAM has arrived yet
@@ -395,12 +412,12 @@ begin
       sdramData_x         <= sdramData_r;
     end if;
 
-    done_o   <= rdPipeline_r(0) or wrPipeline_r(0);  -- a read or write operation is done_o
-    rdDone_o <= rdPipeline_r(0);  -- SDRAM data available when a READ_C flag exits the pipeline 
+    done_o   <= rdPipeline_r(0) or wrPipeline_r(0);  -- a read or write operation is done
+    rdDone_o <= rdPipeline_r(0);  -- SDRAM data available when a READ flag exits the pipeline 
 
-    -----------------------------------------------------------
+    --*********************************************************************
     -- manage row activation
-    -----------------------------------------------------------
+    --*********************************************************************
 
     -- request a row activation operation if the row of the current address
     -- does not match the currently active row in the bank, or if no row
@@ -411,29 +428,28 @@ begin
       doActivate_s <= NO;
     end if;
 
-    -----------------------------------------------------------
+    --*********************************************************************
     -- manage self-refresh
-    -----------------------------------------------------------
+    --*********************************************************************
 
-    -- enter self-refresh if neither a read or write is requested for MAX_NOP_G consecutive cycles.
+    -- enter self-refresh if neither a read or write is requested for MAX_NOP consecutive cycles.
     if (rd_i = YES) or (wr_i = YES) then
-      -- any read or write resets NOP_C counter and exits self-refresh state
+      -- any read or write resets NOP counter and exits self-refresh state
       nopCntr_x    <= 0;
       doSelfRfsh_s <= NO;
     elsif nopCntr_r /= MAX_NOP_G then
-      -- increment NOP_C counter whenever there is no read or write operation 
+      -- increment NOP counter whenever there is no read or write operation 
       nopCntr_x    <= nopCntr_r + 1;
       doSelfRfsh_s <= NO;
     else
-      -- start self-refresh when counter hits maximum NOP_C count and leave counter unchanged
+      -- start self-refresh when counter hits maximum NOP count and leave counter unchanged
       nopCntr_x    <= nopCntr_r;
---      doSelfRfsh <= YES;
-      doSelfRfsh_s <= NO;
+      doSelfRfsh_s <= YES;
     end if;
 
-    -----------------------------------------------------------
+    --*********************************************************************
     -- update the timers 
-    -----------------------------------------------------------
+    --*********************************************************************
 
     -- row activation timer
     if rasTimer_r /= 0 then
@@ -443,7 +459,7 @@ begin
       activateInProgress_s <= YES;
     else
       -- on timeout, keep the timer at zero     and reset the flag
-      -- to indicate the row activation operation is done_o
+      -- to indicate the row activation operation is done
       rasTimer_x           <= rasTimer_r;
       activateInProgress_s <= NO;
     end if;
@@ -484,14 +500,14 @@ begin
       -- the previous operation has completed once the timer hits zero
       timer_x <= timer_r;               -- by default, leave the timer at zero
 
-      -----------------------------------------------------------
+      --*********************************************************************
       -- compute the next state and outputs 
-      -----------------------------------------------------------
+      --*********************************************************************
       case state_r is
 
-        -----------------------------------------------------------
+        --*********************************************************************
         -- let clock stabilize and then wait for the SDRAM to initialize 
-        -----------------------------------------------------------
+        --*********************************************************************
         when INITWAIT =>
           if lock_i = YES then
             -- wait for SDRAM power-on initialization once the clock is stable
@@ -501,14 +517,13 @@ begin
             -- disable SDRAM clock and return to this state if the clock is not stable
             -- this insures the clock is stable before enabling the SDRAM
             -- it also insures a clean startup if the SDRAM is currently in self-refresh mode
-            -- cke_x <= NO;
-            null;                       -- No clock-enable on the XuLA board.
+            cke_x <= NO;
           end if;
           status_o <= "0001";
 
-        -----------------------------------------------------------
+        --*********************************************************************
         -- precharge all SDRAM banks after power-on initialization 
-        -----------------------------------------------------------
+        --*********************************************************************
         when INITPCHG =>
           cmd_x                 <= PCHG_CMD_C;
           sAddr_x(CMDBIT_POS_C) <= ALL_BANKS_C;  -- precharge all banks
@@ -517,21 +532,21 @@ begin
           state_x               <= INITRFSH;
           status_o              <= "0010";
 
-        -----------------------------------------------------------
+        --*********************************************************************
         -- refresh the SDRAM a number of times after initial precharge 
-        -----------------------------------------------------------
+        --*********************************************************************
         when INITRFSH =>
           cmd_x      <= RFSH_CMD_C;
           timer_x    <= RFC_CYCLES_C;  -- set timer to refresh operation duration
           rfshCntr_x <= rfshCntr_r - 1;  -- decrement refresh operation counter
           if rfshCntr_r = 1 then
-            state_x <= INITSETMODE;  -- set the SDRAM mode once all refresh ops are done_o
+            state_x <= INITSETMODE;  -- set the SDRAM mode once all refresh ops are done
           end if;
           status_o <= "0011";
 
-        -----------------------------------------------------------
+        --*********************************************************************
         -- set the mode register of the SDRAM 
-        -----------------------------------------------------------
+        --*********************************************************************
         when INITSETMODE =>
           cmd_x                 <= MODE_CMD_C;
           sAddr_x               <= (others => '0');
@@ -540,14 +555,14 @@ begin
           state_x               <= RW;
           status_o              <= "0100";
 
-        -----------------------------------------------------------
-        -- process read/write/refresh operations after initialization is done_o 
-        -----------------------------------------------------------
+        --*********************************************************************
+        -- process read/write/refresh operations after initialization is done 
+        --*********************************************************************
         when RW =>
-          -----------------------------------------------------------
+          --*********************************************************************
           -- highest priority operation: row refresh 
           -- do a refresh operation if the refresh counter is non-zero
-          -----------------------------------------------------------
+          --*********************************************************************
           if rfshCntr_r /= 0 then
             -- wait for any row activations, writes or reads to finish before doing a precharge
             if (activateInProgress_s = NO) and (wrInProgress_s = NO) and (rdInProgress_s = NO) then
@@ -558,22 +573,22 @@ begin
               state_x               <= REFRESHROW;  -- refresh the SDRAM after the precharge
             end if;
             status_o <= "0101";
-          -----------------------------------------------------------
+          --*********************************************************************
           -- do a host-initiated read operation 
-          -----------------------------------------------------------
+          --*********************************************************************
           elsif rd_i = YES then
             -- Wait one clock cycle if the bank address has just changed and each bank has its own active row.
             -- This gives extra time for the row activation circuitry.
             if (ba_x = ba_r) or (MULTIPLE_ACTIVE_ROWS_G = false) then
               -- activate a new row if the current read is outside the active row or bank
               if doActivate_s = YES then
-                -- activate new row only if all previous activations, writes, reads are done_o
+                -- activate new row only if all previous activations, writes, reads are done
                 if (activateInProgress_s = NO) and (wrInProgress_s = NO) and (rdInProgress_s = NO) then
                   cmd_x                     <= PCHG_CMD_C;  -- initiate precharge of the SDRAM
                   sAddr_x(CMDBIT_POS_C)     <= ONE_BANK_C;  -- precharge this bank
                   timer_x                   <= RP_CYCLES_C;  -- set timer for this operation
                   activeFlag_x(bankIndex_s) <= NO;  -- rows in this bank are inactive after a precharge operation
-                  state_x                   <= ACTIVATE;  -- activate the new row after the precharge is done_o
+                  state_x                   <= ACTIVATE;  -- activate the new row after the precharge is done
                 end if;
               -- read from the currently active row if no previous read operation
               -- is in progress or if pipeline reads are enabled
@@ -587,22 +602,22 @@ begin
               end if;
             end if;
             status_o <= "0110";
-          -----------------------------------------------------------
+          --*********************************************************************
           -- do a host-initiated write operation 
-          -----------------------------------------------------------
+          --*********************************************************************
           elsif wr_i = YES then
             -- Wait one clock cycle if the bank address has just changed and each bank has its own active row.
             -- This gives extra time for the row activation circuitry.
             if (ba_x = ba_r) or (MULTIPLE_ACTIVE_ROWS_G = false) then
               -- activate a new row if the current write is outside the active row or bank
               if doActivate_s = YES then
-                -- activate new row only if all previous activations, writes, reads are done_o
+                -- activate new row only if all previous activations, writes, reads are done
                 if (activateInProgress_s = NO) and (wrInProgress_s = NO) and (rdInProgress_s = NO) then
                   cmd_x                     <= PCHG_CMD_C;  -- initiate precharge of the SDRAM
                   sAddr_x(CMDBIT_POS_C)     <= ONE_BANK_C;  -- precharge this bank
                   timer_x                   <= RP_CYCLES_C;  -- set timer for this operation
                   activeFlag_x(bankIndex_s) <= NO;  -- rows in this bank are inactive after a precharge operation
-                  state_x                   <= ACTIVATE;  -- activate the new row after the precharge is done_o
+                  state_x                   <= ACTIVATE;  -- activate the new row after the precharge is done
                 end if;
               -- write to the currently active row if no previous read operations are in progress
               elsif rdInProgress_s = NO then
@@ -611,18 +626,18 @@ begin
                 -- set timer so precharge doesn't occur too soon after write operation
                 wrTimer_x       <= WR_CYCLES_C;
                 -- insert a flag into the 1-bit pipeline shift register that will exit on the
-                -- next cycle.  The write into SDRAM is not actually done_o by that time, but
+                -- next cycle.  The write into SDRAM is not actually done by that time, but
                 -- this doesn't matter to the host
                 wrPipeline_x(0) <= WRITE_C;
                 opBegun_x       <= YES;  -- tell the host the requested operation has begun
               end if;
             end if;
             status_o <= "0111";
-          -----------------------------------------------------------
+          --*********************************************************************
           -- do a host-initiated self-refresh operation 
-          -----------------------------------------------------------
+          --*********************************************************************
           elsif doSelfRfsh_s = YES then
-            -- wait until all previous activations, writes, reads are done_o
+            -- wait until all previous activations, writes, reads are done
             if (activateInProgress_s = NO) and (wrInProgress_s = NO) and (rdInProgress_s = NO) then
               cmd_x                 <= PCHG_CMD_C;  -- initiate precharge of the SDRAM
               sAddr_x(CMDBIT_POS_C) <= ALL_BANKS_C;  -- precharge all banks
@@ -631,17 +646,17 @@ begin
               state_x               <= SELFREFRESH;  -- self-refresh the SDRAM after the precharge
             end if;
             status_o <= "1000";
-          -----------------------------------------------------------
+          --*********************************************************************
           -- no operation
-          -----------------------------------------------------------
+          --*********************************************************************
           else
             state_x  <= RW;  -- continue to look for SDRAM operations to execute
             status_o <= "1001";
           end if;
 
-        -----------------------------------------------------------
+        --*********************************************************************
         -- activate a row of the SDRAM 
-        -----------------------------------------------------------
+        --*********************************************************************
         when ACTIVATE =>
           cmd_x                     <= ACTIVE_CMD_C;
           sAddr_x                   <= (others => '0');  -- output the address for the row to be activated
@@ -654,25 +669,27 @@ begin
           state_x                   <= RW;  -- return to do read/write operation that initiated this activation
           status_o                  <= "1010";
 
-        -----------------------------------------------------------
+        --*********************************************************************
         -- refresh a row of the SDRAM         
-        -----------------------------------------------------------
+        --*********************************************************************
         when REFRESHROW =>
           cmd_x      <= RFSH_CMD_C;
           timer_x    <= RFC_CYCLES_C;   -- refresh operation interval
           rfshCntr_x <= rfshCntr_r - 1;  -- decrement the number of needed row refreshes
-          state_x    <= RW;  -- process more SDRAM operations after refresh is done_o
+          state_x    <= RW;  -- process more SDRAM operations after refresh is done
           status_o   <= "1011";
 
-        -----------------------------------------------------------
+        --*********************************************************************
         -- place the SDRAM into self-refresh and keep it there until further notice           
-        -----------------------------------------------------------
+        --*********************************************************************
         when SELFREFRESH =>
           if (doSelfRfsh_s = YES) or (lock_i = NO) then
             -- keep the SDRAM in self-refresh mode as long as requested and until there is a stable clock
             cmd_x <= RFSH_CMD_C;  -- output the refresh command; this is only needed on the first clock cycle
+            cke_x <= NO;                -- disable the SDRAM clock
           else
             -- else exit self-refresh mode and start processing read and write operations
+            cke_x        <= YES;        -- restart the SDRAM clock
             rfshCntr_x   <= 0;  -- no refreshes are needed immediately after leaving self-refresh
             activeFlag_x <= (others => NO);  -- self-refresh deactivates all rows
             timer_x      <= XSR_CYCLES_C;  -- wait this long until read and write operations can resume
@@ -680,9 +697,9 @@ begin
           end if;
           status_o <= "1100";
 
-        -----------------------------------------------------------
+        --*********************************************************************
         -- unknown state
-        -----------------------------------------------------------
+        --*********************************************************************
         when others =>
           state_x  <= INITWAIT;         -- reset state if in erroneous state
           status_o <= "1101";
@@ -692,9 +709,9 @@ begin
   end process combinatorial;
 
 
-  -----------------------------------------------------------
+  --*********************************************************************
   -- update registers on the appropriate clock edge     
-  -----------------------------------------------------------
+  --*********************************************************************
 
   update : process(rst_i, clk_i)
   begin
@@ -712,6 +729,7 @@ begin
       opBegun_r    <= NO;
       rdPipeline_r <= (others => '0');
       wrPipeline_r <= (others => '0');
+      cke_r        <= NO;
       cmd_r        <= NOP_CMD_C;
       ba_r         <= (others => '0');
       sAddr_r      <= (others => '0');
@@ -732,6 +750,7 @@ begin
       opBegun_r    <= opBegun_x;
       rdPipeline_r <= rdPipeline_x;
       wrPipeline_r <= wrPipeline_x;
+      cke_r        <= cke_x;
       cmd_r        <= cmd_x;
       ba_r         <= ba_x;
       sAddr_r      <= sAddr_x;
@@ -740,7 +759,7 @@ begin
       sdramData_r  <= sdramData_x;
     end if;
 
-    -- the register that gets data from the SDRAM and holds it for the host
+    -- The register that gets data from the SDRAM and holds it for the host
     -- is clocked on the opposite edge.  We don't use this register if IN_PHASE_G=TRUE.
     if rst_i = YES then
       sdramDataOppPhase_r <= (others => '0');
@@ -755,9 +774,9 @@ end architecture;
 
 
 
---------------------------------------------------------------------
+--*********************************************************************
 -- Dual-port interface to SDRAM controller.
---------------------------------------------------------------------
+--*********************************************************************
 
 library IEEE, UNISIM;
 use IEEE.std_logic_1164.all;
@@ -775,35 +794,35 @@ entity DualPort is
   port(
     clk_i : in std_logic;               -- master clock.
 
-    -- host-side port 0.
-    rst0_i          : in  std_logic                                 := NO;  -- reset.
-    rd0_i           : in  std_logic                                 := NO;  -- initiate read operation.
-    wr0_i           : in  std_logic                                 := NO;  -- initiate write operation.
+    -- Host-side port 0.
+    rst0_i          : in  std_logic                                  := NO;  -- reset.
+    rd0_i           : in  std_logic                                  := NO;  -- initiate read operation.
+    wr0_i           : in  std_logic                                  := NO;  -- initiate write operation.
     earlyOpBegun0_o : out std_logic;    -- read/write op has begun (async).
-    opBegun0_o      : out std_logic;    -- read/write op has begun (clocked).
+    opBegun0_o      : out std_logic                                  := NO;  -- read/write op has begun (clocked).
     rdPending0_o    : out std_logic;  -- true if read operation(s) are still in the pipeline.
     done0_o         : out std_logic;    -- read or write operation is done_i.
     rdDone0_o       : out std_logic;  -- read operation is done_i and data is available.
-    hAddr0_i        : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0);  -- address from host to SDRAM.
-    hostData0_i     : in  std_logic_vector(DATA_WIDTH_G-1 downto 0) := (others => ZERO);  -- data from host to SDRAM.
-    sdramData0_o    : out std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- data from SDRAM to host.
+    addr0_i         : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0) := (others => ZERO);  -- address from host to SDRAM.
+    data0_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);  -- data from host to SDRAM.
+    data0_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);  -- data from SDRAM to host.
     status0_o       : out std_logic_vector(3 downto 0);  -- diagnostic status of the SDRAM controller FSM         .
 
-    -- host-side port 1.
-    rst1_i          : in  std_logic                                 := NO;
-    rd1_i           : in  std_logic                                 := NO;
-    wr1_i           : in  std_logic                                 := NO;
+    -- Host-side port 1.
+    rst1_i          : in  std_logic                                  := NO;
+    rd1_i           : in  std_logic                                  := NO;
+    wr1_i           : in  std_logic                                  := NO;
     earlyOpBegun1_o : out std_logic;
-    opBegun1_o      : out std_logic;
+    opBegun1_o      : out std_logic                                  := NO;
     rdPending1_o    : out std_logic;
     done1_o         : out std_logic;
     rdDone1_o       : out std_logic;
-    hAddr1_i        : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0);
-    hostData1_i     : in  std_logic_vector(DATA_WIDTH_G-1 downto 0) := (others => ZERO);
-    sdramData1_o    : out std_logic_vector(DATA_WIDTH_G-1 downto 0);
+    addr1_i         : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0) := (others => ZERO);
+    data1_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);
+    data1_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);
     status1_o       : out std_logic_vector(3 downto 0);
 
-    -- SDRAM controller port.
+    -- SDRAM controller host-side port.
     rst_o          : out std_logic;
     rd_o           : out std_logic;
     wr_o           : out std_logic;
@@ -812,9 +831,9 @@ entity DualPort is
     rdPending_i    : in  std_logic;
     done_i         : in  std_logic;
     rdDone_i       : in  std_logic;
-    hostAddr_o     : out std_logic_vector(HADDR_WIDTH_G-1 downto 0);
-    hostData_o     : out std_logic_vector(DATA_WIDTH_G-1 downto 0);
-    sdramData_i    : in  std_logic_vector(DATA_WIDTH_G-1 downto 0);
+    addr_o         : out std_logic_vector(HADDR_WIDTH_G-1 downto 0);
+    data_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0);
+    data_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0);
     status_i       : in  std_logic_vector(3 downto 0)
     );
 end entity;
@@ -825,31 +844,31 @@ architecture arch of DualPort is
   -- The door signal controls whether the read/write signal from the active port
   -- is allowed through to the read/write inputs of the SDRAM controller.
   type DoorStateType is (OPENED_C, CLOSED_C);
-  signal door_r, door_x : DoorStateType;
+  signal door_r, door_x : DoorStateType := CLOSED_C;
 
   -- The port signal indicates which port is connected to the SDRAM controller.
   type PortStateType is (PORT0_C, PORT1_C);
-  signal port_r, port_x : PortStateType;
+  signal port_r, port_x : PortStateType := PORT0_C;
 
   signal switch_s                         : std_logic;  -- indicates that the active port should be switched.
   signal inProgress_s                     : std_logic;  -- the active port has a read/write op in-progress.
   signal rd_s                             : std_logic;  -- read signal to the SDRAM controller (internal copy).
   signal wr_s                             : std_logic;  -- write signal to the SDRAM controller (internal copy).
   signal earlyOpBegun0_s, earlyOpBegun1_s : std_logic;  -- (internal copies).
-  signal slot_r, slot_x                   : std_logic_vector(PORT_TIME_SLOTS_G'range);  -- time-slot allocation shift-register.
+  signal slot_r, slot_x                   : std_logic_vector(PORT_TIME_SLOTS_G'range) := PORT_TIME_SLOTS_G;  -- time-slot allocation shift-register.
 begin
 
-  ----------------------------------------------------------------------------
+  --*********************************************************************
   -- multiplex the SDRAM controller port signals to/from the dual host-side ports  
-  ----------------------------------------------------------------------------
+  --*********************************************************************
 
   -- send the SDRAM controller the address and data from the currently active port.
-  hostAddr_o <= hAddr0_i    when port_r = PORT0_C else hAddr1_i;
-  hostData_o <= hostData0_i when port_r = PORT0_C else hostData1_i;
+  addr_o <= addr0_i when port_r = PORT0_C else addr1_i;
+  data_o <= data0_i when port_r = PORT0_C else data1_i;
 
   -- both ports get the data from the SDRAM but only the active port will use it.
-  sdramData0_o <= sdramData_i;
-  sdramData1_o <= sdramData_i;
+  data0_o <= data_i;
+  data1_o <= data_i;
 
   -- send the SDRAM controller status to the active port and give the inactive port an inactive status code.
   status0_o <= status_i when port_r = PORT0_C else "1111";
@@ -882,7 +901,7 @@ begin
   rdDone0_o       <= rdDone_i       when port_r = PORT0_C else NO;
   rdDone1_o       <= rdDone_i       when port_r = PORT1_C else NO;
 
-  ----------------------------------------------------------------------------
+  --*********************************************************************
   -- Indicate when the active port needs to be switched.  A switch occurs if
   -- a read or write operation is requested on the port that is not currently active and:
   -- 1) no R/W operation is being performed on the active port or 
@@ -890,20 +909,20 @@ begin
   --    register is giving precedence to the inactive port.  (The R/W operation on the
   --    active port will be completed before the switch is made.)
   -- This rule keeps the active port from hogging all the bandwidth.
-  ----------------------------------------------------------------------------
+  --*********************************************************************
   switch_s <= (rd0_i or wr0_i) when (port_r = PORT1_C) and (((rd1_i = NO) and (wr1_i = NO)) or (slot_r(0) = '0')) else
               (rd1_i or wr1_i) when (port_r = PORT0_C) and (((rd0_i = NO) and (wr0_i = NO)) or (slot_r(0) = '1')) else
               NO;
 
-  ----------------------------------------------------------------------------
+  --*********************************************************************
   -- Indicate when an operation on the active port is in-progress and
   -- can't be interrupted by a switch to the other port.  (Only read operations
   -- are looked at since write operations always complete in one cycle once they
   -- are initiated.)
-  ----------------------------------------------------------------------------
+  --*********************************************************************
   inProgress_s <= rdPending_i or (rd_s and earlyOpBegun_i);
 
-  ----------------------------------------------------------------------------
+  --*********************************************************************
   -- Update the time-slot allocation shift-register.  The port with priority is indicated by the
   -- least-significant bit of the register.  The register is rotated right if:
   -- 1) the current R/W operation has started, and
@@ -912,17 +931,17 @@ begin
   -- Under these conditions, the current time slot port allocation has been used so
   -- the shift register is rotated right to bring the next port time-slot allocation
   -- bit into play.
-  ----------------------------------------------------------------------------
+  --*********************************************************************
   slot_x <= slot_r(0) & slot_r(slot_r'high downto 1) when (earlyOpBegun_i = YES) and
             (((rd0_i = YES) or (wr0_i = YES)) and ((rd1_i = YES) or (wr1_i = YES))) and
             (((port_r = PORT0_C) and (slot_r(0) = '0')) or ((port_r = PORT1_C) and (slot_r(0) = '1')))
             else slot_r;
 
-  ----------------------------------------------------------------------------
+  --*********************************************************************
   -- Determine which port will be active on the next cycle.  The active port is switched if:
   -- 1) there are no pending operations in progress, and
   -- 2) the port switch indicator is active.
-  ----------------------------------------------------------------------------
+  --*********************************************************************
   port_process : process(port_r, inProgress_s, switch_s, done_i)
   begin
     port_x <= port_r;  -- by default, the active port is not changed
@@ -940,14 +959,14 @@ begin
     end case;
   end process port_process;
 
-  -----------------------------------------------------------
+  --*********************************************************************
   -- Determine if the door is open for the active port to initiate new R/W operations to
   -- the SDRAM controller.  If the door is open and R/W operations are in progress but
   -- a switch to the other port is indicated, then the door is closed to prevent any
   -- further R/W operations from the active port.  The door is re-opened once all
   -- in-progress operations are completed, at which time the switch to the other port
   -- is also completed so it can issue its own R/W commands.
-  -----------------------------------------------------------
+  --*********************************************************************
   door_process : process(door_r, inProgress_s, switch_s)
   begin
     door_x <= door_r;  -- by default, the door remains as it is.
@@ -965,9 +984,9 @@ begin
     end case;
   end process door_process;
 
-  -----------------------------------------------------------
-  -- update registers on the appropriate clock edge     .
-  -----------------------------------------------------------
+  --*********************************************************************
+  -- update registers on the appropriate clock edge.
+  --*********************************************************************
   update : process(rst0_i, rst1_i, clk_i)
   begin
     if (rst0_i = YES) or (rst1_i = YES) then
@@ -981,10 +1000,12 @@ begin
       door_r     <= door_x;
       port_r     <= port_x;
       slot_r     <= slot_x;
+      --*********************************************************************
       -- opBegun signals are cycle-delayed versions of earlyOpBegun signals.
       -- We can't use the actual opBegun signal from the SDRAM controller
       -- because it would be turned off if the active port was switched on the
       -- cycle immediately after earlyOpBegun went active.
+      --*********************************************************************
       opBegun0_o <= earlyOpBegun0_s;
       opBegun1_o <= earlyOpBegun1_s;
     end if;
