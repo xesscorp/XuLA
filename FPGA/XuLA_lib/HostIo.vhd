@@ -116,7 +116,6 @@ package HostIoPckg is
       );
     port (
       reset_i        : in  std_logic := LO;  -- Active-high reset signal.
-      active_o       : out std_logic;
       -- Interface to BscanHostIo.
       inShiftDr_i    : in  std_logic := LO;  -- true when USER JTAG instruction is active and the TAP FSM is in the Shift-DR state.
       drck_i         : in  std_logic := LO;  -- Bit clock. TDI clocked in on rising edge, TDO sampled on falling edge.
@@ -143,7 +142,6 @@ package HostIoPckg is
       );
     port (
       reset_i        : in  std_logic := LO;  -- Active-high reset signal.
-      active_o       : out std_logic;
       -- Interface to BscanHostIo.
       inShiftDr_i    : in  std_logic := LO;  -- true when USER JTAG instruction is active and the TAP FSM is in the Shift-DR state.
       drck_i         : in  std_logic := LO;  -- Bit clock. TDI clocked in on rising edge, TDO sampled on falling edge.
@@ -450,7 +448,6 @@ entity HostIoToRamCore is
     );
   port (
     reset_i        : in  std_logic := LO;  -- Active-high reset signal.
-    active_o       : out std_logic;
     -- Interface to BscanHostIo.
     inShiftDr_i    : in  std_logic := LO;  -- true when USER JTAG instruction is active and the TAP FSM is in the Shift-DR state.
     drck_i         : in  std_logic := LO;  -- Bit clock. TDI clocked in on rising edge, TDO sampled on falling edge.
@@ -481,7 +478,6 @@ architecture arch of HostIoToRamCore is
   signal wrToMemory_r         : std_logic                                     := NO;
   signal rdFromMemory_r       : std_logic                                     := NO;
   signal dataFromMemory_r     : std_logic_vector(dataToHost_i'high downto 0);
-  signal dataFromMemoryRcvd_r : std_logic                                     := NO;
 begin
 
   -- Scan the bits from the host looking for an instruction header.
@@ -505,7 +501,6 @@ begin
   begin
     if rising_edge(drck_i) then
 
-      active_o <= NO;       
       -- Keep processing as long as this module is activated or writing to memory.
       if (active_s = YES or wrToMemory_r = HI) and (reset_i = LO) then
 
@@ -524,7 +519,6 @@ begin
                                                        & CONV_STD_LOGIC_VECTOR(addr_o'length, PARAM_SIZE_C/2);
                 bitCntr_r <= PARAM_SIZE_C;  -- Set the number of data bits to send.
               else  -- Shift next bit of memory parameters to the host.
-                active_o <= YES;
                 shiftReg_r <= ZERO & shiftReg_r(shiftReg_r'high downto 1);  -- Shift register contents.
                 bitCntr_r  <= bitCntr_r - 1;  -- One more bit has been sent to the host.
               end if;
@@ -533,19 +527,22 @@ begin
               if addrFromHostRcvd_r = NO then  -- Receiving the memory write address from the host.
                 addrFromHost_r     <= tdi_i & addrFromHost_r(addrFromHost_r'high downto 1);
                 addrFromHostRcvd_r <= addrFromHost_r(0);  -- Address complete once LSB is set.
+                wrToMemory_r <= NO;
+                shiftReg_r <= (others=>ZERO);
+                shiftReg_r(dataFromHost_o'high) <= ONE;
               else    -- Now get data to write to memory from the host.
-                if shiftReg_r(0) = NO then  -- Shifting in data from host before writing it to memory. 
+                if wrToMemory_r = YES and rwDone_i = YES then  -- Write to memory is done.
+                  wrToMemory_r   <= NO;  -- Stop any further writes till another complete data word arrives from host.
+                end if;
+                if shiftReg_r(0) = LO then  -- Shifting in data from host before writing it to memory. 
                   shiftReg_r <= tdi_i & shiftReg_r(dataFromHost_o'high downto 1);
                 else  -- Data from host received, now write it into the memory.
                   dataFromHost_o                  <= tdi_i & shiftReg_r(dataFromHost_o'high downto 1);  -- Store host data so it doesn't change if more bits arrive from host.
                   -- Clear shift register so it can receive more data from the host.
                   shiftReg_r                      <= (others => ZERO);
                   shiftReg_r(dataFromHost_o'high) <= HI;
-                  wrToMemory_r                    <= HI;  -- Initiate write of host data to memory.
-                end if;
-                if wrToMemory_r = HI and rwDone_i = HI then  -- Write to memory is done.
-                  wrToMemory_r   <= LO;  -- Stop any further writes till another complete data word arrives from host.
-                  addrFromHost_r <= addrFromHost_r + 1;  -- Point to next memory location to be written.
+                  wrToMemory_r                    <= YES;  -- Initiate write of host data to memory.
+                  addrFromHost_r <= addrFromHost_r + 1;  -- Point to next memory location to be written (if needed).
                 end if;
               end if;
 
@@ -557,23 +554,20 @@ begin
                 rdFromMemory_r     <= addrFromHost_r(0);  -- Initiate read as soon as address is received.
                 bitCntr_r          <= dataFromMemory_r'length - 1;  -- Output garbage word until 1st read has a chance to complete.
               else
-                if dataFromMemoryRcvd_r = NO then  -- Receive a complete data word from the host.
-                  if rdFromMemory_r = HI and rwDone_i = HI then  -- Keep checking to see when memory data arrives.
-                    rdFromMemory_r       <= LO;  -- OK, data is here so stop the reading the memory.
-                    dataFromMemory_r     <= dataToHost_i;  -- Store the memory data until it can be loaded into the host shift reg.
-                    dataFromMemoryRcvd_r <= YES;  -- Set flag to initiate loading of memory data into shift reg.
-                    addrFromHost_r       <= addrFromHost_r + 1;  -- Point to next memory location to read from.
-                  elsif pyldCntr_s >= shiftReg_r'length then
-                    rdFromMemory_r <= HI;  -- Initiate the next read unless the host shift reg already contains the final data read.
-                  end if;
+                if rdFromMemory_r = YES and rwDone_i = YES then  -- Receive a complete data word from the host.
+                  rdFromMemory_r <= NO;  -- OK, data is here so stop the reading the memory.
+                  dataFromMemory_r <= dataToHost_i;  -- Store the memory data until it can be loaded into the host shift reg.
                 end if;
-                if bitCntr_r /= 0 then  -- Shift data from memory to the host.
+                if bitCntr_r = 0 then -- Shift register is empty.
+                  shiftReg_r(dataFromMemory_r'range) <= dataFromMemory_r; --  Reload it with new data from memory.
+                  bitCntr_r <= dataFromMemory_r'length-1; -- Reload the bit counter.
+                  if pyldCntr_s >= shiftReg_r'length then -- Is more data expected by the host?
+                    addrFromHost_r       <= addrFromHost_r + 1;  -- Point to next memory location to read from.
+                    rdFromMemory_r <= YES; -- Initiate the read operation.
+                  end if;
+                else -- Shift register is shifting its contents to the host.
                   shiftReg_r <= ZERO & shiftReg_r(shiftReg_r'high downto 1);  -- Shift register contents.
                   bitCntr_r  <= bitCntr_r - 1;  -- One more bit has been sent to the host.
-                else  -- Load data from memory into shift register (whether it's ready or not).
-                  shiftReg_r(dataFromMemory_r'range) <= dataFromMemory_r;  -- Load the new data into the host shift register.
-                  bitCntr_r                          <= dataFromMemory_r'length - 1;  -- Set the number of data bits to send.
-                  dataFromMemoryRcvd_r               <= NO;  -- Clear the flag so the next memory read can occur.
                 end if;
               end if;
 
@@ -594,9 +588,8 @@ begin
         shiftReg_r                          <= (others => ZERO);
         shiftReg_r(dataFromHost_o'high)     <= ONE;
         bitCntr_r                           <= 0;
-        wrToMemory_r                        <= LO;
-        rdFromMemory_r                      <= LO;
-        dataFromMemoryRcvd_r                <= NO;
+        wrToMemory_r                        <= NO;
+        rdFromMemory_r                      <= NO;
       end if;
     end if;
 
@@ -671,25 +664,8 @@ begin
   end process;
 
 -- UDoneSync : SyncToClock port map(clk_i=>drck_i, unsynced_i=>doneOut_r, synced_o=>doneOut_o);
+--  doneOut_o <= doneOut_r and ctrlIn_i;
   doneOut_o <= doneOut_r;
-
-  -- -- If RAM control signal from other clock doamin is inactive, then deactivate the RAM and tell
-  -- -- the controller in the other clock domain that the memory operation is not done.          
-  -- if ctrlIn_s = LO then
-  -- ctrlOut_o <= LO;
-  -- doneOut_o <= LO;
-  -- -- If the RAM control signal was inactive but is now active, then activate the RAM but
-  -- -- keep the done signal back to the other clock domain inactive.
-  -- elsif prevCtrlIn_s = LO then
-  -- ctrlOut_o <= HI;
-  -- doneOut_o <= LO;
-  -- -- If the RAM control is active and the RAM has finished its operation, then deactivate
-  -- -- the RAM and tell the controller in the other clock domain that the operation is done.
-  -- elsif doneIn_i = HI then
-  -- ctrlOut_o <= LO;
-  -- doneOut_o <= HI;
-  -- end if;
-  -- Store the previous state of the control signal so we can detect the rising edge.
   
 end architecture;
 
@@ -712,7 +688,6 @@ entity HostIoToRam is
     );
   port (
     reset_i        : in  std_logic := LO;  -- Active-high reset signal.
-    active_o       : out std_logic;
     -- Interface to BscanHostIo.
     inShiftDr_i    : in  std_logic := LO;  -- true when USER JTAG instruction is active and the TAP FSM is in the Shift-DR state.
     drck_i         : in  std_logic := LO;  -- Bit clock. TDI clocked in on rising edge, TDO sampled on falling edge.
@@ -773,7 +748,6 @@ begin
       )
     port map(
       reset_i        => reset_i,
-      active_o       => active_o,
       inShiftDr_i    => inShiftDr_s,
       drck_i         => drck_s,
       tdi_i          => tdi_s,
