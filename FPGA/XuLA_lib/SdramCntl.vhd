@@ -104,7 +104,7 @@ package SdramCntlPckg is
       addr0_i         : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0) := (others => ZERO);  -- address from host to SDRAM.
       data0_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);  -- data from host to SDRAM.
       data0_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);  -- data from SDRAM to host.
-      status0_o       : out std_logic_vector(3 downto 0);  -- diagnostic status of the SDRAM controller FSM.
+      status0_o       : out std_logic_vector(3 downto 0);  -- diagnostic status of the SDRAM controller FSM         .
 
       -- Host-side port 1.
       rst1_i          : in  std_logic                                  := NO;
@@ -133,6 +133,74 @@ package SdramCntlPckg is
       data_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0);
       data_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0);
       status_i       : in  std_logic_vector(3 downto 0)
+      );
+  end component;
+
+  component DualPortSdram is
+    generic(
+      PORT_TIME_SLOTS_G      : std_logic_vector(15 downto 0) := "1111000011110000";
+      FREQ_G                 : real                          := 100.0;  -- Operating frequency in MHz.
+      IN_PHASE_G             : boolean                       := true;  -- SDRAM and controller work on same or opposite clock edge.
+      PIPE_EN_G              : boolean                       := false;  -- If true, enable pipelined read operations.
+      MAX_NOP_G              : natural                       := 10000;  -- Number of NOPs before entering self-refresh.
+      ENABLE_REFRESH_G       : boolean                       := true;  -- If true, row refreshes are automatically inserted.
+      MULTIPLE_ACTIVE_ROWS_G : boolean                       := false;  -- If true, allow an active row in each bank.
+      DATA_WIDTH_G           : natural                       := 16;  -- Host & SDRAM data width.
+      -- Parameters for Winbond W9812G6JH-75 (all times are in nanoseconds).
+      NROWS_G                : natural                       := 4096;  -- Number of rows in SDRAM array.
+      NCOLS_G                : natural                       := 512;  -- Number of columns in SDRAM array.
+      HADDR_WIDTH_G          : natural                       := 23;  -- Host-side address width.
+      SADDR_WIDTH_G          : natural                       := 12;  -- SDRAM-side address width.
+      T_INIT_G               : real                          := 200_000.0;  -- min initialization interval (ns).
+      T_RAS_G                : real                          := 45.0;  -- min interval between active to precharge commands (ns).
+      T_RCD_G                : real                          := 20.0;  -- min interval between active and R/W commands (ns).
+      T_REF_G                : real                          := 64_000_000.0;  -- maximum refresh interval (ns).
+      T_RFC_G                : real                          := 65.0;  -- duration of refresh operation (ns).
+      T_RP_G                 : real                          := 20.0;  -- min precharge command duration (ns).
+      T_XSR_G                : real                          := 75.0  -- exit self-refresh time (ns).
+      );
+    port(
+      clk_i : in std_logic;             -- master clock.
+
+      -- Host-side port 0.
+      rst0_i          : in  std_logic                                  := NO;  -- reset.
+      rd0_i           : in  std_logic                                  := NO;  -- initiate read operation.
+      wr0_i           : in  std_logic                                  := NO;  -- initiate write operation.
+      earlyOpBegun0_o : out std_logic;  -- read/write op has begun (async).
+      opBegun0_o      : out std_logic                                  := NO;  -- read/write op has begun (clocked).
+      rdPending0_o    : out std_logic;  -- true if read operation(s) are still in the pipeline.
+      done0_o         : out std_logic;  -- read or write operation is done_i.
+      rdDone0_o       : out std_logic;  -- read operation is done_i and data is available.
+      addr0_i         : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0) := (others => ZERO);  -- address from host to SDRAM.
+      data0_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);  -- data from host to SDRAM.
+      data0_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);  -- data from SDRAM to host.
+      status0_o       : out std_logic_vector(3 downto 0);  -- diagnostic status of the SDRAM controller FSM         .
+
+      -- Host-side port 1.
+      rst1_i          : in  std_logic                                  := NO;
+      rd1_i           : in  std_logic                                  := NO;
+      wr1_i           : in  std_logic                                  := NO;
+      earlyOpBegun1_o : out std_logic;
+      opBegun1_o      : out std_logic                                  := NO;
+      rdPending1_o    : out std_logic;
+      done1_o         : out std_logic;
+      rdDone1_o       : out std_logic;
+      addr1_i         : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0) := (others => ZERO);
+      data1_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);
+      data1_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);
+      status1_o       : out std_logic_vector(3 downto 0);
+
+      -- SDRAM side.
+      sdCke_o   : out   std_logic;      -- Clock-enable to SDRAM.
+      sdCe_bo   : out   std_logic;      -- Chip-select to SDRAM.
+      sdRas_bo  : out   std_logic;      -- SDRAM row address strobe.
+      sdCas_bo  : out   std_logic;      -- SDRAM column address strobe.
+      sdWe_bo   : out   std_logic;      -- SDRAM write enable.
+      sdBs_o    : out   std_logic_vector(1 downto 0);  -- SDRAM bank address.
+      sdAddr_o  : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM row/column address.
+      sdData_io : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- Data to/from SDRAM.
+      sdDqmh_o  : out   std_logic;  -- Enable upper-byte of SDRAM databus if true.
+      sdDqml_o  : out   std_logic  -- Enable lower-byte of SDRAM databus if true.
       );
   end component;
 
@@ -1010,5 +1078,197 @@ begin
       opBegun1_o <= earlyOpBegun1_s;
     end if;
   end process update;
+
+end architecture;
+
+
+
+
+--*********************************************************************
+-- Dual-port interface + SDRAM controller.
+--*********************************************************************
+
+library IEEE, UNISIM;
+use IEEE.std_logic_1164.all;
+use IEEE.std_logic_unsigned.all;
+use IEEE.numeric_std.all;
+use WORK.CommonPckg.all;
+use work.SdramCntlPckg.all;
+
+entity DualPortSdram is
+  generic(
+    PORT_TIME_SLOTS_G      : std_logic_vector(15 downto 0) := "1111000011110000";
+    FREQ_G                 : real                          := 100.0;  -- Operating frequency in MHz.
+    IN_PHASE_G             : boolean                       := true;  -- SDRAM and controller work on same or opposite clock edge.
+    PIPE_EN_G              : boolean                       := false;  -- If true, enable pipelined read operations.
+    MAX_NOP_G              : natural                       := 10000;  -- Number of NOPs before entering self-refresh.
+    ENABLE_REFRESH_G       : boolean                       := true;  -- If true, row refreshes are automatically inserted.
+    MULTIPLE_ACTIVE_ROWS_G : boolean                       := false;  -- If true, allow an active row in each bank.
+    DATA_WIDTH_G           : natural                       := 16;  -- Host & SDRAM data width.
+    -- Parameters for Winbond W9812G6JH-75 (all times are in nanoseconds).
+    NROWS_G                : natural                       := 4096;  -- Number of rows in SDRAM array.
+    NCOLS_G                : natural                       := 512;  -- Number of columns in SDRAM array.
+    HADDR_WIDTH_G          : natural                       := 23;  -- Host-side address width.
+    SADDR_WIDTH_G          : natural                       := 12;  -- SDRAM-side address width.
+    T_INIT_G               : real                          := 200_000.0;  -- min initialization interval (ns).
+    T_RAS_G                : real                          := 45.0;  -- min interval between active to precharge commands (ns).
+    T_RCD_G                : real                          := 20.0;  -- min interval between active and R/W commands (ns).
+    T_REF_G                : real                          := 64_000_000.0;  -- maximum refresh interval (ns).
+    T_RFC_G                : real                          := 65.0;  -- duration of refresh operation (ns).
+    T_RP_G                 : real                          := 20.0;  -- min precharge command duration (ns).
+    T_XSR_G                : real                          := 75.0  -- exit self-refresh time (ns).
+    );
+  port(
+    clk_i : in std_logic;               -- master clock.
+
+    -- Host-side port 0.
+    rst0_i          : in  std_logic                                  := NO;  -- reset.
+    rd0_i           : in  std_logic                                  := NO;  -- initiate read operation.
+    wr0_i           : in  std_logic                                  := NO;  -- initiate write operation.
+    earlyOpBegun0_o : out std_logic;    -- read/write op has begun (async).
+    opBegun0_o      : out std_logic                                  := NO;  -- read/write op has begun (clocked).
+    rdPending0_o    : out std_logic;  -- true if read operation(s) are still in the pipeline.
+    done0_o         : out std_logic;    -- read or write operation is done_i.
+    rdDone0_o       : out std_logic;  -- read operation is done_i and data is available.
+    addr0_i         : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0) := (others => ZERO);  -- address from host to SDRAM.
+    data0_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);  -- data from host to SDRAM.
+    data0_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);  -- data from SDRAM to host.
+    status0_o       : out std_logic_vector(3 downto 0);  -- diagnostic status of the SDRAM controller FSM         .
+
+    -- Host-side port 1.
+    rst1_i          : in  std_logic                                  := NO;
+    rd1_i           : in  std_logic                                  := NO;
+    wr1_i           : in  std_logic                                  := NO;
+    earlyOpBegun1_o : out std_logic;
+    opBegun1_o      : out std_logic                                  := NO;
+    rdPending1_o    : out std_logic;
+    done1_o         : out std_logic;
+    rdDone1_o       : out std_logic;
+    addr1_i         : in  std_logic_vector(HADDR_WIDTH_G-1 downto 0) := (others => ZERO);
+    data1_i         : in  std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);
+    data1_o         : out std_logic_vector(DATA_WIDTH_G-1 downto 0)  := (others => ZERO);
+    status1_o       : out std_logic_vector(3 downto 0);
+
+    -- SDRAM side.
+    sdCke_o   : out   std_logic;        -- Clock-enable to SDRAM.
+    sdCe_bo   : out   std_logic;        -- Chip-select to SDRAM.
+    sdRas_bo  : out   std_logic;        -- SDRAM row address strobe.
+    sdCas_bo  : out   std_logic;        -- SDRAM column address strobe.
+    sdWe_bo   : out   std_logic;        -- SDRAM write enable.
+    sdBs_o    : out   std_logic_vector(1 downto 0);  -- SDRAM bank address.
+    sdAddr_o  : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM row/column address.
+    sdData_io : inout std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- Data to/from SDRAM.
+    sdDqmh_o  : out   std_logic;  -- Enable upper-byte of SDRAM databus if true.
+    sdDqml_o  : out   std_logic  -- Enable lower-byte of SDRAM databus if true.
+    );
+end entity;
+
+
+architecture arch of DualPortSdram is
+  signal rst_s          : std_logic;
+  signal rd_s           : std_logic;
+  signal wr_s           : std_logic;
+  signal earlyOpBegun_s : std_logic;
+  signal opBegun_s      : std_logic;
+  signal rdPending_s    : std_logic;
+  signal done_s         : std_logic;
+  signal rdDone_s       : std_logic;
+  signal addr_s         : std_logic_vector(addr0_i'range);
+  signal dataFromHost_s : std_logic_vector(sdData_io'range);
+  signal dataToHost_s   : std_logic_vector(sdData_io'range);
+  signal status_s       : std_logic_vector(status0_o'range);
+begin
+
+  u0 : DualPort
+    generic map(
+      PIPE_EN_G         => PIPE_EN_G,
+      PORT_TIME_SLOTS_G => PORT_TIME_SLOTS_G,
+      DATA_WIDTH_G      => DATA_WIDTH_G,
+      HADDR_WIDTH_G     => HADDR_WIDTH_G
+      )
+    port map(
+      clk_i => clk_i,
+
+      -- Host-side port 0.
+      rst0_i          => rst0_i,
+      rd0_i           => rd0_i,
+      wr0_i           => wr0_i,
+      earlyOpBegun0_o => earlyOpBegun0_o,
+      opBegun0_o      => opBegun0_o,
+      rdPending0_o    => rdPending0_o,
+      done0_o         => done0_o,
+      rdDone0_o       => rdDone0_o,
+      addr0_i         => addr0_i,
+      data0_i         => data0_i,
+      data0_o         => data0_o,
+      status0_o       => status0_o,
+
+      -- Host-side port 1.
+      rst1_i          => rst1_i,
+      rd1_i           => rd1_i,
+      wr1_i           => wr1_i,
+      earlyOpBegun1_o => earlyOpBegun1_o,
+      opBegun1_o      => opBegun1_o,
+      rdPending1_o    => rdPending1_o,
+      done1_o         => done1_o,
+      rdDone1_o       => rdDone1_o,
+      addr1_i         => addr1_i,
+      data1_i         => data1_i,
+      data1_o         => data1_o,
+      status1_o       => status1_o,
+
+      -- SDRAM controller host-side port.
+      rst_o          => rst_s,
+      rd_o           => rd_s,
+      wr_o           => wr_s,
+      earlyOpBegun_i => earlyOpBegun_s,
+      opBegun_i      => opBegun_s,
+      rdPending_i    => rdPending_s,
+      done_i         => done_s,
+      rdDone_i       => rdDone_s,
+      addr_o         => addr_s,
+      data_o         => dataFromHost_s,
+      data_i         => dataToHost_s,
+      status_i       => status_s
+      );
+
+  u1 : SdramCntl
+    generic map(
+      FREQ_G        => FREQ_G,
+      IN_PHASE_G    => IN_PHASE_G,
+      PIPE_EN_G     => PIPE_EN_G,
+      MAX_NOP_G     => MAX_NOP_G,
+      DATA_WIDTH_G  => DATA_WIDTH_G,
+      NROWS_G       => NROWS_G,
+      NCOLS_G       => NCOLS_G,
+      HADDR_WIDTH_G => HADDR_WIDTH_G,
+      SADDR_WIDTH_G => SADDR_WIDTH_G
+      )
+    port map(
+      clk_i          => clk_i,  -- master clock from external clock source (unbuffered)
+      lock_i         => YES,   -- no DLLs, so frequency is always locked
+      rst_i          => rst_s,          -- reset
+      rd_i           => rd_s,  -- host-side SDRAM read control from memory tester
+      wr_i           => wr_s,  -- host-side SDRAM write control from memory tester
+      earlyOpBegun_o => earlyOpBegun_s,  -- early indicator that memory operation has begun
+      opBegun_o      => opBegun_s,    -- indicates memory read/write has begun
+      rdPending_o    => rdPending_s,  -- read operation to SDRAM is in progress_o
+      done_o         => done_s,  -- SDRAM memory read/write done indicator
+      rdDone_o       => rdDone_s,  -- indicates SDRAM memory read operation is done
+      addr_i         => addr_s,  -- host-side address from memory tester to SDRAM
+      data_i         => dataFromHost_s,  -- test data pattern from memory tester to SDRAM
+      data_o         => dataToHost_s,   -- SDRAM data output to memory tester
+      status_o       => status_s,  -- SDRAM controller state (for diagnostics)
+      sdCke_o        => sdCke_o,        -- Clock-enable to SDRAM.
+      sdCe_bo        => sdCe_bo,        -- Chip-select to SDRAM.
+      sdRas_bo       => sdRas_bo,       -- SDRAM RAS
+      sdCas_bo       => sdCas_bo,       -- SDRAM CAS
+      sdWe_bo        => sdWe_bo,        -- SDRAM write-enable
+      sdBs_o         => sdBs_o,         -- SDRAM bank address
+      sdAddr_o       => sdAddr_o,       -- SDRAM address
+      sdData_io      => sdData_io,      -- data to/from SDRAM
+      sdDqmh_o       => sdDqmh_o,  -- Enable upper-byte of SDRAM databus if true.
+      sdDqml_o       => sdDqml_o  -- Enable lower-byte of SDRAM databus if true.
+      );
 
 end architecture;
