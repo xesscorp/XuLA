@@ -346,7 +346,7 @@ end architecture;
 library IEEE, UNISIM;
 use IEEE.std_logic_1164.all;
 use IEEE.std_logic_unsigned.all;
-use UNISIM.vcomponents.all;
+use IEEE.numeric_std.all;
 use work.CommonPckg.all;
 
 
@@ -365,32 +365,30 @@ entity FifoCc is
 end entity;
 
 architecture arch of FifoCc is
-  signal full_s    : std_logic;
-  signal empty_s   : std_logic;
-  signal rdAddr_r  : std_logic_vector(7 downto 0) := "00000000";
-  signal wrAddr_r  : std_logic_vector(7 downto 0) := "00000000";
-  signal level_r   : std_logic_vector(7 downto 0) := "00000000";
-  signal rdAllow_s : std_logic;
-  signal wrAllow_s : std_logic;
+  signal full_s      : std_logic;
+  signal empty_s     : std_logic;
+  signal rdAddr_r    : std_logic_vector(7 downto 0) := "00000000";
+  signal wrAddr_r    : std_logic_vector(7 downto 0) := "00000000";
+  signal level_r     : std_logic_vector(7 downto 0) := "00000000";
+  signal rdAllow_s   : std_logic;
+  signal wrAllow_s   : std_logic;
+  subtype RamWord_t is std_logic_vector(dataIn_i'range);  -- RAM word type.
+  type Ram_t is array (0 to 255) of RamWord_t;  -- array of RAM words type.
+  signal ram_r       : Ram_t;           -- RAM declaration.
+  signal dataToRam_r : RamWord_t;       -- Data to write to RAM.
 begin
 
-  -- Dual-port block RAM provides the storage for the FIFO.
-  bram1 : RAMB4_S16_S16
-    port map (
-      addra => rdAddr_r,
-      addrb => wrAddr_r,
-      dia   => (others => '0'),
-      dib   => dataIn_i,
-      wea   => NO,
-      web   => YES,
-      clka  => clk_i,
-      clkb  => clk_i,
-      rsta  => NO,
-      rstb  => NO,
-      ena   => rdAllow_s,
-      enb   => wrAllow_s,
-      doa   => dataOut_o
-      );
+  -- Inferred dual-port RAM.  
+  process (clk_i)
+  begin
+    if rising_edge(clk_i) then
+      if wrAllow_s = YES then
+        ram_r(to_integer(unsigned(wrAddr_r))) <= dataIn_i;
+      end if;
+      dataOut_o <= ram_r(to_integer(unsigned(rdAddr_r)));
+    end if;
+  end process;
+
 
   -- Allow read and write of FIFO under these conditions.         
   rdAllow_s <= rd_i and not empty_s;
