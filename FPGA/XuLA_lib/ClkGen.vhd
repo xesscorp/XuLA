@@ -28,26 +28,34 @@ use IEEE.STD_LOGIC_1164.all;
 
 package ClkGenPckg is
 
-component ClkGen is
-  generic (
-    BASE_FREQ_G : real                  := 12.0;  -- Input frequency in MHz.
-    CLK_MUL_G   : natural range 1 to 32 := 25;    -- Frequency multiplier.
-    CLK_DIV_G   : natural range 1 to 32 := 3      -- Frequency divider.
-    );
-  port (
-    i   : in  std_logic;                -- Clock input (12 MHz by default).
-    o   : out std_logic;  -- Generated clock output (100 MHz by default).
-    o_b : out std_logic  -- Negative-phase generated clock output (inverse of 'o' output).
-    );
-end component;
+  --**********************************************************************
+  -- Generate a clock frequency from a master clock.
+  --**********************************************************************
+  component ClkGen is
+    generic (
+      BASE_FREQ_G : real                  := 12.0;  -- Input frequency in MHz.
+      CLK_MUL_G   : natural range 1 to 32 := 25;    -- Frequency multiplier.
+      CLK_DIV_G   : natural range 1 to 32 := 3      -- Frequency divider.
+      );
+    port (
+      i            : in  std_logic;     -- Clock input (12 MHz by default).
+      o            : out std_logic;  -- Generated clock output (100 MHz by default).
+      o_b          : out std_logic;  -- Negative-phase generated clock output (inverse of 'o' output).
+      clkToLogic_o : out std_logic  -- Clock signal that can go to an output pin or logic-gate input.
+      );
+  end component;
 
-component ClkToLogic is
-  port (
-    clk_i  : in  std_logic;             -- Positive-phase of clock input.
-    clk_ib : in  std_logic;             -- Negative-phase of clock input.
-    clk_o  : out std_logic   -- Clock output that's suitable as a logic input.
-    );
-end component;
+  --**********************************************************************
+  -- Send a clock signal to an output pin or some logic that's not
+  -- on an FPGA clock network.
+  --**********************************************************************
+  component ClkToLogic is
+    port (
+      clk_i  : in  std_logic;           -- Positive-phase of clock input.
+      clk_ib : in  std_logic;           -- Negative-phase of clock input.
+      clk_o  : out std_logic  -- Clock output that's suitable as a logic input.
+      );
+  end component;
 
 end package;
 
@@ -55,8 +63,12 @@ end package;
 library IEEE, UNISIM;
 use IEEE.STD_LOGIC_1164.all;
 use work.CommonPckg.all;
+use work.ClkGenPckg.all;
 use UNISIM.VComponents.all;
 
+--**********************************************************************
+-- Generate a clock frequency from a master clock.
+--**********************************************************************
 entity ClkGen is
   generic (
     BASE_FREQ_G : real                  := 12.0;  -- Input frequency in MHz.
@@ -64,15 +76,16 @@ entity ClkGen is
     CLK_DIV_G   : natural range 1 to 32 := 3      -- Frequency divider.
     );
   port (
-    i   : in  std_logic;                -- Clock input (12 MHz by default).
-    o   : out std_logic;  -- Generated clock output (100 MHz by default).
-    o_b : out std_logic  -- Negative-phase generated clock output (inverse of 'o' output).
+    i            : in  std_logic;       -- Clock input (12 MHz by default).
+    o            : out std_logic;  -- Generated clock output (100 MHz by default).
+    o_b          : out std_logic;  -- Negative-phase generated clock output (inverse of 'o' output).
+    clkToLogic_o : out std_logic  -- Clock signal that can go to an output pin or logic-gate input.
     );
 end entity;
 
 architecture arch of ClkGen is
-  signal genClkP_s : std_logic;
-  signal genClkN_s : std_logic;
+  signal genClkP_s : std_logic; -- Positive phase of generated clock.
+  signal genClkN_s : std_logic; -- Negative phase of generated clock.
 begin
 
   u0 : DCM_SP
@@ -92,8 +105,19 @@ begin
     port map (
       RST      => '0',                  -- DCM asynchronous reset input
       CLKIN    => i,               -- Clock input (from IBUFG, BUFG or DCM)
-      CLKFX    => o,               -- Positive-phase of generated clock output
-      CLKFX180 => o_b              -- Negative-phase of generated clock output.
+      CLKFX    => genClkP_s,       -- Positive-phase of generated clock output
+      CLKFX180 => genClkN_s        -- Negative-phase of generated clock output.
+      );
+
+  o   <= genClkP_s;
+  o_b <= genClkN_s;
+
+  -- Create a clock signal that can go to an output pin or to a logic-gate input.
+  u1 : ClkToLogic
+    port map (
+      clk_i  => genClkP_s,
+      clk_ib => genClkN_s,
+      clk_o  => clkToLogic_o
       );
 end architecture;
 
@@ -103,6 +127,10 @@ use IEEE.STD_LOGIC_1164.all;
 use work.CommonPckg.all;
 use UNISIM.VComponents.all;
 
+--**********************************************************************
+-- Send a clock signal to an output pin or some logic that's not
+-- on an FPGA clock network.
+--**********************************************************************
 entity ClkToLogic is
   port (
     clk_i  : in  std_logic;             -- Positive-phase of clock input.
