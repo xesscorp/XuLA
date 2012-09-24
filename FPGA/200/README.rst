@@ -25,6 +25,9 @@ Each of these directories contains a complete Xilinx ISE WebPACK 13 design proje
         This design is used to interface the XuLA board to the UrJtag tools.
         It is not yet ready for general release, so it is currently not supported.
 
+    hcsr04_test/:
+        A simple interface to test an HCSR04 ultrasonic distance measurement module.
+
     hostio_test/:
         This design is used to test the ability of the HostIo modules to pass
         data back-and-forth between the FPGA and the host PC.
