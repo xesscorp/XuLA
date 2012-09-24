@@ -1,0 +1,87 @@
+net clk_i loc=p43; # 12 MHz clock to FPGA.
+
+net trig_o loc=p50;
+net echo_i loc=p32;
+
+
+# Connect LED Digits module to WING3.
+
+# WING1 connections for LED Digits module.
+#net s_o<0> loc=p50;
+#net s_o<1> loc=p32;
+#net s_o<2> loc=p37;
+#net s_o<3> loc=p33;
+#net s_o<4> loc=p36;
+#net s_o<5> loc=p34;
+#net s_o<6> loc=p44;
+#net s_o<7> loc=p35;
+
+# WING2 connections for LED Digits module.
+#net s_o<0> loc=p61;
+#net s_o<1> loc=p12;
+#net s_o<2> loc=p57;
+#net s_o<3> loc=p13;
+#net s_o<4> loc=p56;
+#net s_o<5> loc=p19;
+#net s_o<6> loc=p52;
+#net s_o<7> loc=p20;
+
+# WING3 connections for LED Digits module.
+net s_o<0> loc=p84;
+net s_o<1> loc=p83;
+net s_o<2> loc=p94;
+net s_o<3> loc=p73;
+net s_o<4> loc=p72;
+net s_o<5> loc=p3;
+net s_o<6> loc=p4;
+net s_o<7> loc=p62;
+
+# PM2 connections for LED Digits module.
+#net s_o<0> loc=p33;
+#net s_o<1> loc=p35;
+#net s_o<2> loc=p37;
+#net s_o<3> loc=p44;
+#net s_o<4> loc=p32;
+#net s_o<5> loc=p34;
+#net s_o<6> loc=p50;
+#net s_o<7> loc=p36;
+
+# PM3 connections for LED Digits module.
+#net s_o<0> loc=p20;
+#net s_o<1> loc=p33;
+#net s_o<2> loc=p52;
+#net s_o<3> loc=p37;
+#net s_o<4> loc=p19;
+#net s_o<5> loc=p32;
+#net s_o<6> loc=p56;
+#net s_o<7> loc=p50;
+
+# PM4 connections for LED Digits module.
+#net s_o<0> loc=p13;
+#net s_o<1> loc=p20;
+#net s_o<2> loc=p57;
+#net s_o<3> loc=p52;
+#net s_o<4> loc=p12;
+#net s_o<5> loc=p19;
+#net s_o<6> loc=p61;
+#net s_o<7> loc=p56;
+
+# PM5 connections for LED Digits module.
+#net s_o<0> loc=p62;
+#net s_o<1> loc=p13;
+#net s_o<2> loc=p4;
+#net s_o<3> loc=p57;
+#net s_o<4> loc=p3;
+#net s_o<5> loc=p12;
+#net s_o<6> loc=p72;
+#net s_o<7> loc=p61;
+
+# PM6 connections for LED Digits module.
+#net s_o<0> loc=p73;
+#net s_o<1> loc=p62;
+#net s_o<2> loc=p94;
+#net s_o<3> loc=p4;
+#net s_o<4> loc=p83;
+#net s_o<5> loc=p3;
+#net s_o<6> loc=p84;
+#net s_o<7> loc=p72;
