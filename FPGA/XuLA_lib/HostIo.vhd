@@ -535,7 +535,7 @@ begin
                   wrToMemory_r   <= NO;  -- Stop any further writes till another complete data word arrives from host.
                 end if;
                 if shiftReg_r(0) = LO then  -- Shifting in data from host before writing it to memory. 
-                  shiftReg_r <= tdi_i & shiftReg_r(dataFromHost_o'high downto 1);
+                  shiftReg_r(dataFromHost_o'range) <= tdi_i & shiftReg_r(dataFromHost_o'high downto 1);
                 else  -- Data from host received, now write it into the memory.
                   dataFromHost_o                  <= tdi_i & shiftReg_r(dataFromHost_o'high downto 1);  -- Store host data so it doesn't change if more bits arrive from host.
                   -- Clear shift register so it can receive more data from the host.
