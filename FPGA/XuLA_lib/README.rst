@@ -48,6 +48,9 @@ These are HDL files for modules that are useful in a variety of larger designs.
         
     RotaryEncoder.vhd:
         An interface to detect CW/CCW rotation of a rotary encoder.
+        
+    SDCard.vhdl:
+        An interface module that simplifies reading/writing to a Secure Digital Flash card.
 
     SdramCntl.vhd:
         An interface module that makes an SDRAM appear as a simple SRAM-like memory to
