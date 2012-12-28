@@ -33,6 +33,6 @@ NET * IOSTANDARD = LVTTL;
 ##############################
 # Clock Nets
 ##############################
-NET "fpgaClk_i" TNM_NET = "fpgaClk_i";
+NET "fpgaClk_i" TNM_NET =  "fpgaClk_i";
 TIMESPEC "TSfpgaClk_i" = PERIOD "fpgaClk_i" 12 MHz HIGH 50%;
 NET "fpgaClk_i" CLOCK_DEDICATED_ROUTE = FALSE;
