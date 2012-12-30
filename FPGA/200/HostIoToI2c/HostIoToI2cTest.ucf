@@ -1,0 +1,3 @@
+net fpgaClk_i loc=p43 | IOSTANDARD = LVTTL;
+net scl_io    loc=p32 | IOSTANDARD = LVTTL;
+net sda_io    loc=p50 | IOSTANDARD = LVTTL;
