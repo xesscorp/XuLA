@@ -34,6 +34,7 @@ use work.SyncToClockPckg.all;
 
 entity test_board_jtag is
   generic(
+    ID_G          : std_logic_vector := "00000001";  -- The ID this module responds to.
     BASE_FREQ_G   : real    := 12.0;    -- Base frequency in MHz.
     CLK_MUL_G     : natural := 25;      -- Multiplier for base frequency.
     CLK_DIV_G     : natural := 3;       -- Divider for base frequency.
@@ -84,7 +85,7 @@ begin
   clk_s <= sdClkFb_i;  -- Main clock is SDRAM clock fed back into FPGA.
 
   u1 : HostIoToDut
-    generic map(SIMPLE_G => true, FPGA_DEVICE_G => SPARTAN3A)
+    generic map(SIMPLE_G => true, FPGA_DEVICE_G => SPARTAN3A, ID_G => ID_G)
     port map(
       vectorFromDut_i => test_status_s,
       vectorToDut_o   => test_ctrl_s

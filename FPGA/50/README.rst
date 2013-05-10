@@ -15,6 +15,10 @@ Each of these directories contains a complete Xilinx ISE WebPACK 13 design proje
         This design is used by GXSLOAD when it needs to read or write the contents of the
         serial flash configuration memory on the XuLA board.
 
+    fintf_jtag_new/:
+        This design is used by xsload.py when it needs to read or write the contents of the
+        serial flash configuration memory on the XuLA board.
+
     fjmem_intfc/:
         This design is used to interface the XuLA board to the UrJtag tools.
         It is not yet ready for general release, so it is currently not supported.
@@ -27,6 +31,10 @@ Each of these directories contains a complete Xilinx ISE WebPACK 13 design proje
         This design is used by GXSLOAD when it needs to read or write the contents of the
         SDRAM on the XuLA board.
 
+    ramintfc_jtag_new/:
+        This design is used by xsload.py when it needs to read or write the contents of the
+        SDRAM on the XuLA board.
+
     sdram_test/:
         This design is a simple tester for the SDRAM that reports success or failure
         through the prototyping header rather than sending the status through the JTAG
@@ -34,4 +42,8 @@ Each of these directories contains a complete Xilinx ISE WebPACK 13 design proje
 
     test_board_jtag/:
         This design is used by GXSTEST to test the SDRAM and report the success or failure
+        through the JTAG and USB links.
+
+    test_board_jtag_new/:
+        This design is used by xstest.py to test the SDRAM and report the success or failure
         through the JTAG and USB links.
