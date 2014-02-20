@@ -17,11 +17,11 @@
 # ©1997-2013 - X Engineering Software Systems Corp. (www.xess.com)
 #---------------------------------------------------------------------
 
-NET fpgaClk_i LOC = p43 | IOSTANDARD = LVTTL;    # 12 MHz clock input.
-NET ssel_o    LOC = p27 | IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
-NET sck_o     LOC = p53 | IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
-NET mosi_o    LOC = p46 | IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
-NET miso_i    LOC = p51 | IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
+NET fpgaClk_i   LOC = p43 | IOSTANDARD = LVTTL;    # 12 MHz clock input.
+NET flashCs_bo  LOC = p27 | IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
+NET sclk_o      LOC = p53 | IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
+NET mosi_o      LOC = p46 | IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
+NET miso_i      LOC = p51 | IOSTANDARD = LVTTL | SLEW=SLOW | DRIVE=6;
 
 ##############################
 # Clock Nets

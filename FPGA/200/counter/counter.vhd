@@ -22,11 +22,11 @@
 ----------------------------------------------------------------------------------
 
 
-library IEEE;
+library IEEE, XESS;
 use IEEE.STD_LOGIC_1164.all;
 use IEEE.STD_LOGIC_ARITH.all;
 use IEEE.STD_LOGIC_UNSIGNED.all;
-use work.ClkgenPckg.all;
+use XESS.ClkGenPckg.all;
 
 ---- Uncomment the following library declaration if instantiating
 ---- any Xilinx primitives in this code.

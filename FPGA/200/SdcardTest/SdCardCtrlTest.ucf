@@ -20,10 +20,10 @@
 NET fpgaClk_i LOC = p43;    # 12 MHz clock input.
 
 # Channel connections to SD card.
-NET sclk_o    LOC = p44;    # chanClk_io
-NET cs_bo     LOC = p36;    # chan_io<0>
-NET mosi_o    LOC = p37;    # chan_io<1>
-NET miso_i    LOC = p39;    # chan_i<2>
+NET sclk_o         LOC = p44;    # chanClk_io
+NET usdflashCs_bo  LOC = p36;    # chan_io<0>
+NET mosi_o         LOC = p37;    # chan_io<1>
+NET miso_i         LOC = p39;    # chan_i<2>
 
 ##############################
 # I/O Drive

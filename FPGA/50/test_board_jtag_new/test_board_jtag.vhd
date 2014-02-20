@@ -22,34 +22,22 @@
 ----------------------------------------------------------------------------------
 
 
-library IEEE;
+library IEEE, XESS;
 use IEEE.STD_LOGIC_1164.all;
 use IEEE.numeric_std.all;
-use work.CommonPckg.all;
-use work.HostIoPckg.all;
-use work.TestBoardCorePckg.all;
-use work.ClkgenPckg.all;
-use work.SyncToClockPckg.all;
-
+use XESS.CommonPckg.all;
+use XESS.HostIoPckg.all;
+use XESS.TestBoardCorePckg.all;
+use XESS.ClkgenPckg.all;
+use XESS.SyncToClockPckg.all;
+use work.XessBoardPckg.all;
 
 entity test_board_jtag is
   generic(
-    ID_G          : std_logic_vector := "00000001";  -- The ID this module responds to.
-    BASE_FREQ_G   : real    := 12.0;    -- Base frequency in MHz.
-    CLK_MUL_G     : natural := 25;      -- Multiplier for base frequency.
-    CLK_DIV_G     : natural := 3;       -- Divider for base frequency.
-    PIPE_EN_G     : boolean := true;
-    DATA_WIDTH_G  : natural := 16;      -- Width of data.
-    HADDR_WIDTH_G : natural := 23;      -- Host-side address width.
-    SADDR_WIDTH_G : natural := 12;      -- SDRAM address bus width.
-    NROWS_G       : natural := 4096;    -- Number of rows in each SDRAM bank.
-    NCOLS_G       : natural := 512;     -- Number of words in each row.
-    -- Beginning and ending addresses for the entire SDRAM.
-    BEG_ADDR_G    : natural := 16#00_0000#;
-    END_ADDR_G    : natural := 16#7F_FFFF#;
-    -- Beginning and ending address for the memory tester.
-    BEG_TEST_G    : natural := 16#00_0000#;
-    END_TEST_G    : natural := 16#3F_FFFF#
+    ID_G        : std_logic_vector := "00000001";  -- The ID this module responds to.
+    BASE_FREQ_G : real             := BASE_FREQ_C;        -- Base frequency in MHz.
+    CLK_MUL_G   : natural          := 25;  -- Multiplier for base frequency.
+    CLK_DIV_G   : natural          := 3   -- Divider for base frequency.
     );
   port(
     fpgaClk_i : in    std_logic;  -- Main clock input from external clock source.
@@ -59,22 +47,22 @@ entity test_board_jtag is
     sdCas_bo  : out   std_logic;        -- SDRAM CAS.
     sdWe_bo   : out   std_logic;        -- SDRAM write-enable.
     sdBs_o    : out   std_logic;        -- SDRAM bank-address.
-    sdAddr_o  : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM address bus.
-    sdData_io : inout std_logic_vector(DATA_WIDTH_G-1 downto 0)  -- Data bus to/from SDRAM.
+    sdAddr_o  : out   std_logic_vector(SDRAM_SADDR_WIDTH_C-1 downto 0);  -- SDRAM address bus.
+    sdData_io : inout std_logic_vector(SDRAM_DATA_WIDTH_C-1 downto 0)  -- Data bus to/from SDRAM.
     );
 end entity;
 
 
 architecture arch of test_board_jtag is
 
-  constant FREQ_G : real := (BASE_FREQ_G * real(CLK_MUL_G)) / real(CLK_DIV_G);
-  signal clk_s    : std_logic;
+  constant FREQ_C        : real := (BASE_FREQ_G * real(CLK_MUL_G)) / real(CLK_DIV_G);
+  constant SIGNATURE_C   : std_logic_vector(31 downto 0) := x"A50001A5";
+  signal clk_s           : std_logic;
   signal reset_s         : std_logic;
   signal syncedReset_s   : std_logic;
   signal test_ctrl_s     : std_logic_vector(0 downto 0);
   signal test_progress_s : std_logic_vector(1 downto 0);  -- Progress of the test.
   signal test_failed_s   : std_logic;  -- True if an error was found during the test.
-  signal signature_s     : std_logic_vector(31 downto 0) := x"A50001A5";
   signal test_status_s   : std_logic_vector(34 downto 0);
 begin
 
@@ -85,13 +73,13 @@ begin
   clk_s <= sdClkFb_i;  -- Main clock is SDRAM clock fed back into FPGA.
 
   u1 : HostIoToDut
-    generic map(SIMPLE_G => true, FPGA_DEVICE_G => SPARTAN3A, ID_G => ID_G)
+    generic map(SIMPLE_G => true, ID_G => ID_G)
     port map(
       vectorFromDut_i => test_status_s,
       vectorToDut_o   => test_ctrl_s
       );
   reset_s       <= test_ctrl_s(0);
-  test_status_s <= signature_s & test_failed_s & test_progress_s;
+  test_status_s <= SIGNATURE_C & test_failed_s & test_progress_s;
 
   -- Sync reset signal from HostIoToDut to TestBoardCore.      
   u2 : SyncToClock
@@ -104,20 +92,17 @@ begin
   -- Board diagnostic unit.
   u3 : TestBoardCore
     generic map(
-      FREQ_G        => FREQ_G,
-      PIPE_EN_G     => PIPE_EN_G,
-      DATA_WIDTH_G  => DATA_WIDTH_G,
-      SADDR_WIDTH_G => SADDR_WIDTH_G,
-      NROWS_G       => NROWS_G,
-      NCOLS_G       => NCOLS_G,
-      BEG_ADDR_G    => BEG_ADDR_G,
-      END_ADDR_G    => END_ADDR_G,
-      BEG_TEST_G    => BEG_TEST_G,
-      END_TEST_G    => END_TEST_G
+      FREQ_G    => FREQ_C,
+      PIPE_EN_G => true
       )
     port map(
-      rst_i      => reset_s,
+      rst_i      => syncedReset_s,
+      do_again_i => NO,
       clk_i      => clk_s,
+      progress_o => test_progress_s,
+      err_o      => test_failed_s,
+      sdCke_o    => open,
+      sdCe_bo    => open,
       sdRas_bo   => sdRas_bo,
       sdCas_bo   => sdCas_bo,
       sdWe_bo    => sdWe_bo,
@@ -125,8 +110,8 @@ begin
       sdBs_o(1)  => open,
       sdAddr_o   => sdAddr_o,
       sdData_io  => sdData_io,
-      progress_o => test_progress_s,
-      err_o      => test_failed_s
+      sdDqmh_o   => open,
+      sdDqml_o   => open
       );
 
 end architecture;

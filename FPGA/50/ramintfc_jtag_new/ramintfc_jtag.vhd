@@ -23,31 +23,24 @@
 --------------------------------------------------------------------
 
 
-library IEEE;
+library IEEE, XESS;
 use IEEE.STD_LOGIC_1164.all;
 use IEEE.STD_LOGIC_ARITH.all;
 use IEEE.STD_LOGIC_UNSIGNED.all;
-use work.CommonPckg.all;
-use work.SdramCntlPckg.all;
-use work.ClkgenPckg.all;
-use work.HostIoPckg.all;
-
-library UNISIM;
-use UNISIM.VComponents.all;
+use XESS.CommonPckg.all;
+use XESS.SdramCntlPckg.all;
+use XESS.ClkgenPckg.all;
+use XESS.HostIoPckg.all;
+use work.XessBoardPckg.all;
 
 
 entity ramintfc_jtag is
   generic(
     ID_G          : std_logic_vector := "00000011";  -- The ID this module responds to.
-    BASE_FREQ_G   : real    := 12.0;    -- base frequency in MHz
+    BASE_FREQ_G   : real    := BASE_FREQ_C;    -- base frequency in MHz
     CLK_MUL_G     : natural := 25;      -- multiplier for base frequency
     CLK_DIV_G     : natural := 3;       -- divider for base frequency
-    PIPE_EN_G     : boolean := false;
-    DATA_WIDTH_G  : natural := 16;      -- width of data
-    HADDR_WIDTH_G : natural := 32;      -- host-side address width
-    SADDR_WIDTH_G : natural := 12;      -- SDRAM address bus width
-    NROWS_G       : natural := 4096;    -- number of rows in each SDRAM bank
-    NCOLS_G       : natural := 512      -- number of words in each row
+    PIPE_EN_G     : boolean := false
     );
   port(
     fpgaClk_i  : in    std_logic;       -- main clock input from external clock source
@@ -57,8 +50,8 @@ entity ramintfc_jtag is
     sdCas_bo   : out   std_logic;       -- SDRAM column address strobe.
     sdWe_bo    : out   std_logic;       -- SDRAM write enable.
     sdBs_o     : out   std_logic;       -- SDRAM bank address.
-    sdAddr_o   : out   std_logic_vector(SADDR_WIDTH_G-1 downto 0);  -- SDRAM row/column address.
-    sdData_io  : inout std_logic_vector(DATA_WIDTH_G-1 downto 0)  -- Data to/from SDRAM.
+    sdAddr_o   : out   std_logic_vector(SDRAM_SADDR_WIDTH_C-1 downto 0);  -- SDRAM row/column address.
+    sdData_io  : inout std_logic_vector(SDRAM_DATA_WIDTH_C-1 downto 0)  -- Data to/from SDRAM.
     );
 end entity;
 
@@ -69,19 +62,14 @@ architecture arch of ramintfc_jtag is
   signal clk_s    : std_logic;
   signal reset_s  : std_logic := YES;
 
-  signal inShiftDr_s : std_logic;
-  signal drck_s      : std_logic;
-  signal tdi_s       : std_logic;
-  signal tdo_s       : std_logic;
-
   -- signals to/from the SDRAM controller
   signal rd_s           : std_logic;    -- host read enable
   signal wr_s           : std_logic;    -- host write enable
   signal earlyOpBegun_s : std_logic;  -- true when current read/write has begun.
   signal done_s         : std_logic;    -- true when current read/write is done
-  signal addr_s         : std_logic_vector(HADDR_WIDTH_G-1 downto 0);  -- host address
-  signal dataToRam_s    : std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- data input from host
-  signal dataFromRam_s  : std_logic_vector(DATA_WIDTH_G-1 downto 0);  -- host data output to host
+  signal addr_s         : std_logic_vector(SDRAM_HADDR_WIDTH_C-1 downto 0);  -- host address
+  signal dataToRam_s    : std_logic_vector(SDRAM_DATA_WIDTH_C-1 downto 0);  -- data input from host
+  signal dataFromRam_s  : std_logic_vector(SDRAM_DATA_WIDTH_C-1 downto 0);  -- host data output to host
   
 begin
 
@@ -92,32 +80,14 @@ begin
 
   clk_s <= sdClkFb_i;  -- main clock is SDRAM clock fed back into FPGA
 
-  -- PC host-to-JTAG interface.
-  u2 : BscanToHostIo
-    generic map(
-      FPGA_DEVICE_G => SPARTAN3A
-      )
-    port map(
-      inShiftDr_o => inShiftDr_s,
-      drck_o      => drck_s,
-      tdi_o       => tdi_s,
-      tdo_i       => tdo_s
-      );
-
   u3 : HostIoToRam
     generic map(
       ID_G     => ID_G,   -- The ID this module responds to.
-      SIMPLE_G => false,  -- If true, include BscanToHostIo module in this module.
+      SIMPLE_G => true,  -- If true, include BscanToHostIo module in this module.
       SYNC_G   => true    -- If true, sync this module with the FPGA app. logic clock domain.
       )
     port map(
       reset_i        => reset_s,        -- Active-high reset signal.
-      -- Host-to-JTAG interface.
-      inShiftDr_i    => inShiftDr_s,
-      drck_i         => drck_s,
-      tdi_i          => tdi_s,
-      tdo_o          => tdo_s,
-      -- Interface to the memory.
       clk_i          => clk_s,          -- Clock from FPGA application logic. 
       addr_o         => addr_s,         -- Address to memory.
       wr_o           => wr_s,           -- Write data to memory when high.
@@ -132,14 +102,7 @@ begin
   u4 : SdramCntl
     generic map(
       FREQ_G        => FREQ_G,
-      IN_PHASE_G    => true,
-      PIPE_EN_G     => PIPE_EN_G,
-      MAX_NOP_G     => 10000,
-      NROWS_G       => NROWS_G,
-      NCOLS_G       => NCOLS_G,
-      HADDR_WIDTH_G => HADDR_WIDTH_G,
-      SADDR_WIDTH_G => SADDR_WIDTH_G,
-      DATA_WIDTH_G  => DATA_WIDTH_G
+      PIPE_EN_G     => PIPE_EN_G
       )
     port map(
       clk_i          => clk_s,  -- master clock from external clock source (unbuffered)
