@@ -20,8 +20,8 @@ Really, Really Important Note!!!
 ==========================================
 
 Many of these projects use the new unified library of VHDL components stored in the
-`VHDL_Lib repository<https://github.com/xesscorp/VHDL_Lib>`_. If you try to compile 
+`VHDL_Lib repository <https://github.com/xesscorp/VHDL_Lib>`_. If you try to compile 
 these projects and you get a bunch of warnings about missing files, then you don't 
 have this library installed or it's in the wrong place. Please look in the 
-`VHDL_Lib README<https://github.com/xesscorp/VHDL_Lib/blob/master/README.rst>`_ for 
+`VHDL_Lib README <https://github.com/xesscorp/VHDL_Lib/blob/master/README.rst>`_ for 
 instructions on how to install and use it.
