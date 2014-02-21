@@ -7,7 +7,7 @@ This directory contains the following subdirectories of FPGA example designs for
     XuLA_lib/:
         A directory of HDL files for modules that are useful in a variety of larger designs.
         (These modules are retained for some legacy projects, but have been superseded by those 
-        in the `VHDL_Lib repository<https://github.com/xesscorp/VHDL_Lib>`_.)
+        in the `VHDL_Lib repository <https://github.com/xesscorp/VHDL_Lib>`_.)
 
     50/:
         A directory of design projects for the XuLA-50 board.
