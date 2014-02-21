@@ -2,7 +2,7 @@
 XuLA-200 FPGA Design Examples
 ==========================================
 
-Each of these directories contains a complete Xilinx ISE WebPACK 13 design project for the XuLA-200 board.
+Each of these directories contains a complete Xilinx ISE project for the XuLA-200 board.
 
     blinker/:
         A simple LED blinker design from chapter 4 of the book "FPGAs!? Now What?".
@@ -22,12 +22,8 @@ Each of these directories contains a complete Xilinx ISE WebPACK 13 design proje
         serial flash configuration memory on the XuLA board.
 
     fintf_jtag_new/:
-        This design is used by xsload.py when it needs to read or write the contents of the
-        serial flash configuration memory on the XuLA board.
-
-    fjmem_intfc/:
-        This design is used to interface the XuLA board to the UrJtag tools.
-        It is not yet ready for general release, so it is currently not supported.
+        This design is used by the Python version of XSLOAD when it needs to read or write 
+        the contents of the serial flash configuration memory on the XuLA board.
 
     hcsr04_test/:
         A simple interface to test an HCSR04 ultrasonic distance measurement module.
@@ -39,17 +35,13 @@ Each of these directories contains a complete Xilinx ISE WebPACK 13 design proje
     HostIoToI2c:
         This design allows a host PC to talk to an I2C peripheral.
 
-    logic_analyzer/:
-        This is a version of the Sump logic analyzer for the XuLA board.
-        It is not yet completely functional.
-
     ramintfc_jtag/:
         This design is used by GXSLOAD when it needs to read or write the contents of the
         SDRAM on the XuLA board.
 
     ramintfc_jtag_new/:
-        This design is used by xsload.py when it needs to read or write the contents of the
-        SDRAM on the XuLA board.
+        This design is used by the Python version of XSLOAD when it needs to read or write 
+        the contents of the SDRAM on the XuLA board.
 
     rand_test/:
         This design uses the hostio module to gather samples from the random-number generator module.
@@ -68,11 +60,10 @@ Each of these directories contains a complete Xilinx ISE WebPACK 13 design proje
         through the JTAG and USB links.
 
     test_board_jtag_new/:
-        This design is used by xstest.py to test the SDRAM and report the success or failure
-        through the JTAG and USB links.
+        This design is used by the Python version of XSTEST to test the SDRAM and report 
+        the success or failure through the JTAG and USB links.
 
     vga_bram/:
         This is a character-based VGA module. *It uses a third-party VGA controller and not the 
         VGA module in the XuLA_lib directory.*
 
-=back

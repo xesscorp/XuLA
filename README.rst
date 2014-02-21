@@ -22,7 +22,9 @@ This repo integrates everything for the XuLA FPGA board into one place:
                 It manages the interface between the FPGA and the USB link.
                 
     FPGA/:
-        All the example FPGA designs for the XuLA are stored in here.
+        Some example FPGA designs for the XuLA are stored in here.
+        (You can find others in the StickIt! repository under the subdirectories
+        for the modules they support.)
         
     docs/:
         Look in here for the source of the XuLA manual and other supporting documentation.
